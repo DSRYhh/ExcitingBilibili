@@ -8,15 +8,14 @@ import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodingRange}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.ActorMaterializer
-
 import org.jsoup.Jsoup
-
 import io.circe.generic.auto._
 import io.circe.parser.decode
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.matching.Regex
 import scala.util.{Failure, Success}
 
 
@@ -31,7 +30,8 @@ case class VideoBaiscInfo(av : String,
                           upMid : Int,
                           createTime : Date,
                           zone : String,
-                          subZone : String)
+                          subZone : String,
+                          cid : String)
 
 case class ViewInfoResponse(code : Int,
                             data : VideoViewInfo,
@@ -94,12 +94,17 @@ object Video
 
                 val pageTitle = doc.title()
                 val videoTitle = doc.body().select("div.v-title").select("h1").text()
-                val pattern  = s"${videoTitle}_(\\S+?)_(\\S+?)_bilibili_哔哩哔哩".r
-                val matchResult = pattern.findAllIn(pageTitle)
+                val videoPattern  = s"${videoTitle}_(\\S+?)_(\\S+?)_bilibili_哔哩哔哩".r
+                val matchResult = videoPattern.findAllIn(pageTitle)
                 val subZone = matchResult.group(1)
                 val zone = matchResult.group(2)
 
                 val createTime = doc.body().select("div.main-inner").select("div.tminfo").first().select("time").text()
+
+                val pattern : Regex = "cid=([0-9]+?)&".r
+                val cidMatchResult = pattern.findAllIn(doc.body().toString)
+                val cid = cidMatchResult.group(1)
+
 
                 VideoBaiscInfo(av,
                     videoTitle,
@@ -107,7 +112,8 @@ object Video
                     upMid.toInt,
                     new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse(createTime),
                     zone,
-                    subZone)
+                    subZone,
+                    cid)
             })
     }
 

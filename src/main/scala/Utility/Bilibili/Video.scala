@@ -1,7 +1,6 @@
 package Utility.Bilibili
 import java.util.Date
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
@@ -9,11 +8,15 @@ import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodingRange}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.ActorMaterializer
+
 import org.jsoup.Jsoup
 
+import io.circe.generic.auto._
+import io.circe.parser.decode
+
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.matching.Regex
 import scala.util.{Failure, Success}
 
 
@@ -30,6 +33,24 @@ case class VideoBaiscInfo(av : String,
                           zone : String,
                           subZone : String)
 
+case class ViewInfoResponse(code : Int,
+                            data : VideoViewInfo,
+                            message : String,
+                            ttl : Int)
+
+case class VideoViewInfo(aid : Int,
+                         view : Int,
+                         danmaku : Int,
+                         reply : Int,
+                         favorite : Int,
+                         coin : Int,
+                         share : Int,
+                         now_rank : Int,
+                         his_rank : Int,
+                         like : Int,
+                         no_reprint : Int,
+                         copyright : Int)
+
 object Video
 {
 
@@ -40,7 +61,7 @@ object Video
     implicit val materializer = ActorMaterializer()
 
 
-    def getVideoPage(av : String) : Future[VideoBaiscInfo] = {
+    def getBasicInfo(av : String) : Future[VideoBaiscInfo] = {
 
         av.foreach((c) => if (!c.isDigit)
         {
@@ -49,6 +70,7 @@ object Video
 
         val requestUri = Uri(baseInfoUri.toString() + s"/av$av/")
 
+        //construct http request header
         import akka.http.scaladsl.model.headers
         val user_agent = headers.`User-Agent`("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36")
         val accept_encoding = headers.`Accept-Encoding`(HttpEncodingRange(HttpEncoding("gzip, deflate, br")))
@@ -89,9 +111,41 @@ object Video
             })
     }
 
+    def getViewInfo(av : String) : Future[VideoViewInfo] = {
+        av.foreach((c) => if (!c.isDigit)
+        {
+            throw new IllegalArgumentException
+        })
+
+        val requestUri = viewInfoUri.withQuery(Uri.Query("aid" -> av))
+
+        val responseFuture: Future[HttpResponse] =
+            Http(system).singleRequest(HttpRequest(GET, uri = requestUri))
+
+        responseFuture
+            .map(_.entity)
+            .flatMap(_.toStrict(1 seconds)(materializer)) //TODO network error, and set the timeout
+            .map(_.data)
+            .map(_.utf8String)
+            .map((jsonString : String) =>
+            {
+                decode[ViewInfoResponse](jsonString) match
+                {
+                    case Right(response) => response.data
+                    case Left(error) =>
+                        throw error
+                }
+            })
+    }
+
     def main(args: Array[String]): Unit =
     {
-        getVideoPage("6701825").onComplete
+        getBasicInfo("6701825").onComplete
+        {
+            case Success(x) => println(x)
+            case Failure(error) => println(error)
+        }
+        getViewInfo("6701825").onComplete
         {
             case Success(x) => println(x)
             case Failure(error) => println(error)

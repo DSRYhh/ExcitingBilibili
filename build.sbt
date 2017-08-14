@@ -17,3 +17,5 @@ libraryDependencies ++= Seq(
     "io.circe" %% "circe-generic",
     "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
+
+libraryDependencies += "org.jsoup" % "jsoup" % "1.8.3"

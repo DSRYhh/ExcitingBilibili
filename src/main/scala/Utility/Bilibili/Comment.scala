@@ -89,7 +89,7 @@ case class UserLevel(current_exp: Int,
 
 object Comment
 {
-    private val baseUri = Uri("http://api.bilibili.cn/feedback")
+    val baseUri = Uri("http://api.bilibili.cn/feedback")
 
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()

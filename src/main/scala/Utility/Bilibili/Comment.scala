@@ -4,6 +4,7 @@ import java.util.Date
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.ActorMaterializer
@@ -31,15 +32,19 @@ case class CommentPage(results: Int,
                        hotList: Option[List[Comment]],
                        list: Option[List[Comment]])
 {
-    def LatestTime : Date = {
-        list match {
+    def LatestTime: Date =
+    {
+        list match
+        {
             case Some(l) => l.head.time
             case None => throw new NullPointerException
         }
     }
 
-    def OldestTime : Date = {
-        list match {
+    def OldestTime: Date =
+    {
+        list match
+        {
             case Some(l) => l.last.time
             case None => throw new NullPointerException
         }
@@ -95,40 +100,49 @@ object Comment
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
 
-    def getCommentBefore(av : String, date: Date) : Future[List[Comment]] = {
+    def getCommentBefore(av: String, date: Date): Future[List[Comment]] =
+    {
         throw new NotImplementedError() //TODO implement
     }
 
     /**
       * Get all comments after the specific date. Return Nil if there is nothing can be returned.
-      * @param av the av number of the video
+      *
+      * @param av   the av number of the video
       * @param date the specific date
       * @return All comments after date
       */
-    def getCommentAfter(av : String, date: Date) : Future[List[Comment]] = {
-        getPageCountWithFirstPage(av).map((countAndPage) => {
-            val firstPage : CommentPage = countAndPage._2
+    def getCommentAfter(av: String, date: Date): Future[List[Comment]] =
+    {
+        getPageCountWithFirstPage(av).map((countAndPage) =>
+        {
+            val firstPage: CommentPage = countAndPage._2
 
-            var list : List[Comment] = Nil
+            var list: List[Comment] = Nil
             if (firstPage.results != 0)
             {
-                firstPage.list match {
+                firstPage.list match
+                {
                     case Some(firstList) =>
-                        firstList.filter(_.time.after(date)) match {
+                        firstList.filter(_.time.after(date)) match
+                        {
                             case Nil => Nil
                             case fl =>
                                 list = list ::: fl
 
-                                var ifBreak : Boolean = false
+                                var ifBreak: Boolean = false
                                 for (i <- 2 to firstPage.pages if !ifBreak)
                                 {
-                                    Await.ready(getCommentPage(av, i), Duration.Inf).value.get match {
+                                    Await.ready(getCommentPage(av, i), Duration.Inf).value.get match
+                                    {
                                         case Success(newPage) =>
-                                            newPage.list match {
+                                            newPage.list match
+                                            {
                                                 case Some(newList) =>
-                                                    newList.filter(_.time.after(date)) match {
+                                                    newList.filter(_.time.after(date)) match
+                                                    {
                                                         case Nil => ifBreak = true
-                                                        case newList : List[Comment] =>
+                                                        case newList: List[Comment] =>
                                                             list = list ::: newList
                                                     }
                                                 case None => ifBreak = true
@@ -154,40 +168,50 @@ object Comment
         {
             if (firstPage.results == 0)
             {
-                Future{Nil}
+                Future
+                {
+                    Nil
+                }
             }
             else if (firstPage.pages == 1)
             {
-                Future{
-                    firstPage.list match {
-                    case Some(list) => list
-                    case None => Nil
+                Future
+                {
+                    firstPage.list match
+                    {
+                        case Some(list) => list
+                        case None => Nil
                     }
                 }
             }
             else //more than one page
             {
-                var list : List[Comment] = firstPage.list match {
+                val list: List[Comment] = firstPage.list match
+                {
                     case Some(l) => l
                     case None => Nil
                 }
-//                for (pageCount <- 2 to firstPage.pages)
-//                {
-//                    Await.ready(getCommentPage(av, pageCount), Duration.Inf).value.get match {
-//                        case scala.util.Success(page) => page.list match {
-//                            case Some(newlist) =>
-//                                list = list ::: newlist
-//                            case None => Nil
-//                        }
-//                        case scala.util.Failure(error) => error
-//                    }
-//                }
-                Future.sequence((2 to firstPage.pages).map{count =>
-                    getCommentPage(av,count)
-                })
-                .map(_.toList.map(_.list).map{case Some(l) => l case None => Nil})
-                .map(_.flatten)
-                .map(list ::: _)
+                //                for (pageCount <- 2 to firstPage.pages)
+                //                {
+                //                    Await.ready(getCommentPage(av, pageCount), Duration.Inf).value.get match {
+                //                        case scala.util.Success(page) => page.list match {
+                //                            case Some(newlist) =>
+                //                                list = list ::: newlist
+                //                            case None => Nil
+                //                        }
+                //                        case scala.util.Failure(error) => error
+                //                    }
+                //                }
+
+                //TODO: know issue: akka.stream.BufferOverflowException when av = 1436642
+                Future.sequence((2 to firstPage.pages).map
+                { count =>
+                    getCommentPage(av, count)
+                }).map(_.toList
+                    .map(_.list)
+                    .map{ case Some(l) => l case None => Nil })
+                  .map(_.flatten)
+                  .map(list ::: _)
             }
         })
     }
@@ -196,9 +220,10 @@ object Comment
     {
         page.list match
         {
-            case Some(list) => list match {
+            case Some(list) => list match
+            {
                 case Nil => None
-                case list : List[Comment] => Some(list.head)
+                case list: List[Comment] => Some(list.head)
             }
             case None => None
         }
@@ -214,7 +239,7 @@ object Comment
         getPageCountWithFirstPage(av).map(_._1)
     }
 
-    def getPageCountWithFirstPage(av : String) : Future[(Int, CommentPage)] =
+    def getPageCountWithFirstPage(av: String): Future[(Int, CommentPage)] =
     {
         getCommentPage(av).map(page => (page.pages, page))
     }
@@ -233,7 +258,7 @@ object Comment
             Http(system).singleRequest(HttpRequest(GET, uri = requestUri))
         responseFuture
             .map(_.entity)
-            .flatMap(_.toStrict(5 seconds)(materializer)) //TODO network error, and set the timeout
+            .flatMap(_.toStrict(10 seconds)(materializer)) //TODO set timeout
             .map(_.data)
             .map(_.utf8String)
             .map((jsonString: String) =>
@@ -249,9 +274,9 @@ object Comment
                         case default => default
                     }).as[Int]
                 } yield
-                        {
-                            UserLevel(current_exp, current_level, current_min, next_exp)
-                        }
+                {
+                    UserLevel(current_exp, current_level, current_min, next_exp)
+                }
 
                 decode[CommentPage](jsonString) match
                 {
@@ -265,18 +290,19 @@ object Comment
 
     def main(args: Array[String]): Unit =
     {
-        val av = "13098309"
-//        getCommentAfter(av, new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse("2017-6-1 0:0")).onComplete
-//        {
-//            case Success(list) =>
-//                list.foreach(println(_))
-//            case Failure(error) => println(error)
-//        }
-
-        getCommentPage(av).onComplete{
-            case Success(x) => println(x)
+        val av = "13232432"
+        getCommentAfter(av, new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse("2017-08-14 19:01")).onComplete
+        {
+            case Success(list) =>
+                list.foreach(println(_))
             case Failure(error) => println(error)
         }
+
+//        getAllComment(av).onComplete
+//        {
+//            case Success(x) => println(x)
+//            case Failure(error) => println(error)
+//        }
 
     }
 }

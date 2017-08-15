@@ -8,15 +8,14 @@ import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodingRange}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.ActorMaterializer
-import org.jsoup.Jsoup
 import io.circe.generic.auto._
 import io.circe.parser.decode
+import org.jsoup.Jsoup
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.matching.Regex
-import scala.util.{Failure, Success}
 
 
 
@@ -64,17 +63,17 @@ object Video
     implicit val materializer = ActorMaterializer()
 
 
-//    def getVideoInfo(av : String) : Future[Option[VideoInfo]] = {
-//
-//        getViewInfo(av).map(viewRes => {
-//            viewRes.code match {
-//                case 0 =>
-//                    getBasicInfo(av).map( basicinfo =>
-//                        Some(VideoInfo(viewRes.data, basicinfo)))
-//                case _ => None
-//            }
-//        })
-//    }
+    def getVideoInfo(av : String) : Future[Option[VideoInfo]] = {
+
+        getViewInfo(av).flatMap(viewRes => {
+            viewRes.code match {
+                case 0 =>
+                    getBasicInfo(av).map( basicinfo =>
+                        Some(VideoInfo(viewRes.data, basicinfo)))
+                case _ => Future(None)
+            }
+        })
+    }
 
     private def getBasicInfo(av : String) : Future[VideoBaiscInfo] = {
 
@@ -174,9 +173,9 @@ object Video
 
 
 
-//        getVideoInfo("6701825").map{
-//            case Some(info) => println(info)
-//            case None => println("Video not exists")
-//        }
+        getVideoInfo("6701825").map{
+            case Some(info) => println(info)
+            case None => println("Video not exists")
+        }
     }
 }

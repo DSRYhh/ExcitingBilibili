@@ -13,7 +13,7 @@ import io.circe.generic.auto._
 import io.circe.parser.decode
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.util.matching.Regex
 import scala.util.{Failure, Success}
@@ -51,6 +51,9 @@ case class VideoViewInfo(aid : Int,
                          no_reprint : Int,
                          copyright : Int)
 
+case class VideoInfo (viewInfo : VideoViewInfo,
+                      basicInfo : VideoBaiscInfo)
+
 object Video
 {
 
@@ -61,7 +64,19 @@ object Video
     implicit val materializer = ActorMaterializer()
 
 
-    def getBasicInfo(av : String) : Future[VideoBaiscInfo] = {
+//    def getVideoInfo(av : String) : Future[Option[VideoInfo]] = {
+//
+//        getViewInfo(av).map(viewRes => {
+//            viewRes.code match {
+//                case 0 =>
+//                    getBasicInfo(av).map( basicinfo =>
+//                        Some(VideoInfo(viewRes.data, basicinfo)))
+//                case _ => None
+//            }
+//        })
+//    }
+
+    private def getBasicInfo(av : String) : Future[VideoBaiscInfo] = {
 
         av.foreach((c) => if (!c.isDigit)
         {
@@ -117,7 +132,7 @@ object Video
             })
     }
 
-    def getViewInfo(av : String) : Future[VideoViewInfo] = {
+    private def getViewInfo(av : String) : Future[ViewInfoResponse] = {
         av.foreach((c) => if (!c.isDigit)
         {
             throw new IllegalArgumentException
@@ -137,7 +152,7 @@ object Video
             {
                 decode[ViewInfoResponse](jsonString) match
                 {
-                    case Right(response) => response.data
+                    case Right(response) => response
                     case Left(error) =>
                         throw error
                 }
@@ -146,15 +161,22 @@ object Video
 
     def main(args: Array[String]): Unit =
     {
-        getBasicInfo("6701825").onComplete
-        {
-            case Success(x) => println(x)
-            case Failure(error) => println(error)
-        }
-        getViewInfo("6701825").onComplete
-        {
-            case Success(x) => println(x)
-            case Failure(error) => println(error)
-        }
+//        getBasicInfo("6701825").onComplete
+//        {
+//            case Success(x) => println(x)
+//            case Failure(error) => println(error)
+//        }
+//        getViewInfo("6701825").onComplete
+//        {
+//            case Success(x) => println(x)
+//            case Failure(error) => println(error)
+//        }
+
+
+
+//        getVideoInfo("6701825").map{
+//            case Some(info) => println(info)
+//            case None => println("Video not exists")
+//        }
     }
 }

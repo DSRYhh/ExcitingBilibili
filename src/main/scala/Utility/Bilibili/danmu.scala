@@ -4,7 +4,6 @@ import java.util.zip.{Inflater, InflaterInputStream}
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{HttpEncodingRange, HttpEncodings}
@@ -46,22 +45,9 @@ object danmu
             .map(_.runWith(StreamConverters.asInputStream()))
             .map(new InflaterInputStream(_, new Inflater(true)))
             .map(Source.fromInputStream(_).mkString)
+
     }
 
-
-    def decodeResponse(response: HttpResponse): HttpResponse = {
-        val decoder = response.encoding match {
-            case HttpEncodings.gzip =>
-                Gzip
-            case HttpEncodings.deflate =>
-                Deflate
-            case HttpEncodings.identity =>
-                NoCoding
-            case _ => throw new IllegalArgumentException("Invalid HTTP encoding")
-        }
-
-        decoder.decodeMessage(response)
-    }
 
     def main(args: Array[String]): Unit =
     {

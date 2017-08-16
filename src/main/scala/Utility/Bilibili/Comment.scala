@@ -4,19 +4,19 @@ import java.util.Date
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.ActorMaterializer
-import io.circe.{Decoder, HCursor}
+import akka.stream.scaladsl.{Flow, Sink, Source}
+import com.typesafe.config.ConfigFactory
 import io.circe.generic.auto._
 import io.circe.parser.decode
+import io.circe.{Decoder, HCursor}
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 /**
@@ -75,7 +75,7 @@ case class Comment(mid: Int,
         new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse(create_at)
     }
 
-    override def toString: String = s"$nick: $msg"
+    override def toString: String = s"$nick: $msg\n"
 
     override def equals(obj: scala.Any): Boolean =
     {
@@ -97,8 +97,11 @@ object Comment
 {
     val baseUri = Uri("http://api.bilibili.cn/feedback")
 
-    implicit val system = ActorSystem()
-    implicit val materializer = ActorMaterializer()
+    private implicit val system = ActorSystem("test", ConfigFactory.load())
+    private implicit val materializer = ActorMaterializer()
+    private implicit val executor = system.dispatchers.lookup("my-blocking-dispatcher")
+    private val pool =
+        Http().cachedHostConnectionPool[Int]("api.bilibili.cn")
 
     def getCommentBefore(av: String, date: Date): Future[List[Comment]] =
     {
@@ -209,9 +212,10 @@ object Comment
                     getCommentPage(av, count)
                 }).map(_.toList
                     .map(_.list)
-                    .map{ case Some(l) => l case None => Nil })
-                  .map(_.flatten)
-                  .map(list ::: _)
+                    .map
+                    { case Some(l) => l case None => Nil })
+                    .map(_.flatten)
+                    .map(list ::: _)
             }
         })
     }
@@ -246,63 +250,101 @@ object Comment
 
     def getCommentPage(av: String, pageNum: Int = 1): Future[CommentPage] =
     {
-        av.foreach((c) => if (!c.isDigit)
-        {
-            throw new IllegalArgumentException
-        })
+        avVerifier(av)
 
-        val queryParameters = Map("aid" -> av, "page" -> pageNum.toString)
-
-        val requestUri: Uri = baseUri.withQuery(Uri.Query(queryParameters))
         val responseFuture: Future[HttpResponse] =
-            Http(system).singleRequest(HttpRequest(GET, uri = requestUri))
+            Http(system).singleRequest(commentPageRequestBuilder(av, pageNum))
         responseFuture
             .map(_.entity)
             .flatMap(_.toStrict(10 seconds)(materializer)) //TODO set timeout
-            .map(_.data)
-            .map(_.utf8String)
-            .map((jsonString: String) =>
+            .map(_.data.utf8String)
+            .map(parseCommentPage)
+    }
+
+    def getCommentPages(av: String, pages: Range): Future[List[Comment]] =
+    {
+        avVerifier(av)
+
+        val requests =
+            for (pageCount <- pages)
+                yield (commentPageRequestBuilder(av, pageCount), pageCount)
+
+        Source(requests)
+            .via(pool)
+            .via(Flow[(Try[HttpResponse], Int)].map(result =>
             {
-                implicit val decodeUserLevel: Decoder[UserLevel] = (c: HCursor) => for
+                result._1 match
                 {
-                    current_exp <- c.downField("current_exp").as[Int]
-                    current_level <- c.downField("current_level").as[Int]
-                    current_min <- c.downField("current_min").as[Int]
-                    next_exp <- c.downField("next_exp").withFocus(_.mapString
-                    {
-                        case """-""" => "-1"
-                        case default => default
-                    }).as[Int]
-                } yield
+                    case Success(response) =>
+                        response.entity
+                            .toStrict(1 second)
+                            .map(_.data.utf8String)
+                            .map(parseCommentPage)
+                            .map(_.list).map{
+                                case Some(l) => l match
+                                {
+                                    case Nil => Nil
+                                    case list: List[Comment] => list
+                                }
+                                case None => Nil
+                            }
+                    case Failure(error) => throw error
+                }
+            })).mapAsync(1)(identity)
+            .runFold(List[Comment]())((oriList, newList) => {
+                oriList ::: newList
+            })
+    }
+
+    private def commentPageRequestBuilder(av: String, pageNum: Int = 1) =
+    {
+        avVerifier(av)
+
+        HttpRequest(GET, uri = s"/feedback?aid=$av&page=${pageNum.toString}")
+    }
+
+    private def parseCommentPage(jsonString: String): CommentPage =
+    {
+        implicit val decodeUserLevel: Decoder[UserLevel] = (c: HCursor) => for
+        {
+            current_exp <- c.downField("current_exp").as[Int]
+            current_level <- c.downField("current_level").as[Int]
+            current_min <- c.downField("current_min").as[Int]
+            next_exp <- c.downField("next_exp").withFocus(_.mapString
+            {
+                case """-""" => "-1"
+                case default => default
+            }).as[Int]
+        } yield
                 {
                     UserLevel(current_exp, current_level, current_min, next_exp)
                 }
 
-                decode[CommentPage](jsonString) match
-                {
-                    case Right(comment) =>
-                        comment
-                    case Left(error) =>
-                        throw error
-                }
-            })
+        decode[CommentPage](jsonString) match
+        {
+            case Right(comment) =>
+                comment
+            case Left(error) =>
+                throw error
+        }
     }
 
     def main(args: Array[String]): Unit =
     {
-        val av = "13232432"
-        getCommentAfter(av, new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse("2017-08-14 19:01")).onComplete
+        val av = "1436642"
+
+        //        getCommentAfter(av, new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse("2017-08-14 19:01")).onComplete
+        //        {
+        //            case Success(list) =>
+        //                list.foreach(println(_))
+        //            case Failure(error) => println(error)
+        //        }
+
+        getCommentPages(av, 1 to 100).onComplete
         {
-            case Success(list) =>
-                list.foreach(println(_))
+            case Success(x) => println(s"${x.length}\n$x")
             case Failure(error) => println(error)
         }
-
-//        getAllComment(av).onComplete
-//        {
-//            case Success(x) => println(x)
-//            case Failure(error) => println(error)
-//        }
 
     }
 }

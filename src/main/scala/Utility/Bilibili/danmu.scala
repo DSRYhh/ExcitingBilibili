@@ -1,5 +1,7 @@
 package Utility.Bilibili
 
+import java.util.zip.{Inflater, InflaterInputStream}
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
@@ -7,10 +9,12 @@ import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{HttpEncodingRange, HttpEncodings}
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.StreamConverters
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.io.Source
 import scala.util.{Failure, Success}
 
 
@@ -24,29 +28,26 @@ object danmu
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
 
-    def getDanmu(cid : String) = {
+    def getDanmu(cid : String): Future[String] = {
         val requestUri = Uri(baseUri.toString() + s"/$cid.xml")
 
         import akka.http.scaladsl.model.headers
         val user_agent = headers.`User-Agent`("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36")
-        val accept_encoding = headers.`Accept-Encoding`(HttpEncodingRange(HttpEncodings.deflate))
+        val accept_encoding = headers.`Accept-Encoding`(HttpEncodingRange(HttpEncodings.identity))
         val accept = headers.Accept(MediaRange(MediaTypes.`text/xml`))
 
         val responseFuture: Future[HttpResponse] =
             Http(system).singleRequest(HttpRequest(GET, uri = requestUri, headers = List(user_agent, accept_encoding, accept)))
 
         responseFuture
-            .map(decodeResponse)
             .map(_.entity)
             .flatMap(_.toStrict(1 seconds)(materializer)) // TODO set timeout
-            .map(_.data)
-            .map(_.utf8String)
-            .map((xmlString : String) =>
-                {
-                    println()
-                }
-            )
+            .map(_.dataBytes)
+            .map(_.runWith(StreamConverters.asInputStream()))
+            .map(new InflaterInputStream(_, new Inflater(true)))
+            .map(Source.fromInputStream(_).mkString)
     }
+
 
     def decodeResponse(response: HttpResponse): HttpResponse = {
         val decoder = response.encoding match {

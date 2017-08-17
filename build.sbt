@@ -11,6 +11,7 @@ libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % "10.0.9",
     "com.typesafe.akka" %% "akka-http-testkit" % "10.0.9" % Test
 )
+libraryDependencies += "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6"
 
 libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",

@@ -14,6 +14,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.io.Source
+import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 
@@ -27,7 +28,7 @@ object danmu
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
 
-    def getDanmu(cid : String): Future[String] = {
+    def getDanmu(cid : String) : Future[List[String]] = {
         val requestUri = Uri(baseUri.toString() + s"/$cid.xml")
 
         import akka.http.scaladsl.model.headers
@@ -45,6 +46,9 @@ object danmu
             .map(_.runWith(StreamConverters.asInputStream()))
             .map(new InflaterInputStream(_, new Inflater(true)))
             .map(Source.fromInputStream(_).mkString)
+            .map(xmlString => {
+                (xml.XML.loadString(xmlString) \ "d").map(_.text).toList
+            })
 
     }
 

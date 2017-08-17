@@ -7,7 +7,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.scaladsl.{Flow, Source}
 import com.typesafe.config.ConfigFactory
 import io.circe.generic.auto._
 import io.circe.parser.decode
@@ -53,7 +53,7 @@ case class CommentPage(results: Int,
 
 case class Comment(mid: Int,
                    lv: Int,
-                   fbid: String,
+                   fbid: String, //feedback id
                    ad_check: Int,
                    good: Int,
                    isgood: Int,
@@ -75,7 +75,7 @@ case class Comment(mid: Int,
         new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse(create_at)
     }
 
-    override def toString: String = s"$nick: $msg\n"
+    override def toString: String = s"$lv -- $nick: $msg\n"
 
     override def equals(obj: scala.Any): Boolean =
     {
@@ -85,7 +85,55 @@ case class Comment(mid: Int,
             case _ => false
         }
     }
+}
 
+
+case class flatComment(av : Int,
+                        mid: Int,
+                        lv: Int,
+                        fbid: String, //feedback id
+                        ad_check: Int,
+                        good: Int,
+                        isgood: Int,
+                        msg: String,
+                        device: String,
+                        create: Int,
+                        create_at: String,
+                        reply_count: Int,
+                        face: String,
+                        rank: Int,
+                        nick: String,
+                        current_exp: Int,
+                        current_level: Int,
+                        current_min: Int,
+                        next_exp: Int,
+                        sex : String,
+                        parentFeedBackId : String)
+object flatComment
+{
+    def buildFromComment(comment : Comment, pFbid : String, av : Int) : flatComment = {
+        flatComment(av,
+            comment.mid,
+            comment.lv,
+            comment.fbid,
+            comment.ad_check,
+            comment.good,
+            comment.isgood,
+            comment.msg,
+            comment.device,
+            comment.create,
+            comment.create_at,
+            comment.reply_count,
+            comment.face,
+            comment.rank,
+            comment.nick,
+            comment.level_info.current_exp,
+            comment.level_info.current_level,
+            comment.level_info.current_min,
+            comment.level_info.next_exp,
+            comment.sex,
+            pFbid)
+    }
 }
 
 case class UserLevel(current_exp: Int,
@@ -207,15 +255,17 @@ object Comment
                 //                }
 
                 //TODO: know issue: akka.stream.BufferOverflowException when av = 1436642
-                Future.sequence((2 to firstPage.pages).map
-                { count =>
-                    getCommentPage(av, count)
-                }).map(_.toList
-                    .map(_.list)
-                    .map
-                    { case Some(l) => l case None => Nil })
-                    .map(_.flatten)
-                    .map(list ::: _)
+                getCommentPages(av, 2 to firstPage.pages).map(list ::: _)
+
+                //                Future.sequence((2 to firstPage.pages).map
+                //                { count =>
+                //                    getCommentPage(av, count)
+                //                }).map(_.toList
+                //                    .map(_.list)
+                //                    .map
+                //                    { case Some(l) => l case None => Nil })
+                //                    .map(_.flatten)
+                //                    .map(list ::: _)
             }
         })
     }
@@ -252,11 +302,15 @@ object Comment
     {
         avVerifier(av)
 
+        val queryParameters = Map("aid" -> av, "page" -> pageNum.toString)
+
+        val requestUri: Uri = baseUri.withQuery(Uri.Query(queryParameters))
         val responseFuture: Future[HttpResponse] =
-            Http(system).singleRequest(commentPageRequestBuilder(av, pageNum))
+            Http(system).singleRequest(HttpRequest(GET, uri = requestUri))
+
         responseFuture
             .map(_.entity)
-            .flatMap(_.toStrict(10 seconds)(materializer)) //TODO set timeout
+            .flatMap(_.toStrict(StrictWaitingTime)(materializer))
             .map(_.data.utf8String)
             .map(parseCommentPage)
     }
@@ -277,23 +331,44 @@ object Comment
                 {
                     case Success(response) =>
                         response.entity
-                            .toStrict(1 second)
+                            .toStrict(StrictWaitingTime)
                             .map(_.data.utf8String)
                             .map(parseCommentPage)
-                            .map(_.list).map{
-                                case Some(l) => l match
-                                {
-                                    case Nil => Nil
-                                    case list: List[Comment] => list
-                                }
-                                case None => Nil
+                            .map(_.list).map
+                        {
+                            case Some(l) => l match
+                            {
+                                case Nil => Nil
+                                case list: List[Comment] => list
                             }
+                            case None => Nil
+                        }
                     case Failure(error) => throw error
                 }
             })).mapAsync(1)(identity)
-            .runFold(List[Comment]())((oriList, newList) => {
+            .runFold(List[Comment]())((oriList, newList) =>
+            {
                 oriList ::: newList
             })
+    }
+
+    def flatten(list: List[Comment], av : Int) : List[flatComment] = {
+//        list.flatMap(comment => {
+//            comment.reply match {
+//                case Some(l) => l match {
+//                    case Nil => parents ::: List(flatComment.buildFromComment(comment, parentFbid))
+//                    case replayList => flatten(replayList,
+//                        parents ::: List(flatComment.buildFromComment(comment, parentFbid)),
+//                        comment.fbid)
+//                }
+//                case None => parents ::: List(flatComment.buildFromComment(comment, parentFbid))
+//            }
+//        })
+        list.map(flatComment.buildFromComment(_, NoneParentFeedBackId, av)) :::
+        list.flatMap(comment => comment.reply match {
+            case Some(l) => l.map(flatComment.buildFromComment(_, comment.fbid, av))
+            case None => Nil
+        })
     }
 
     private def commentPageRequestBuilder(av: String, pageNum: Int = 1) =
@@ -331,7 +406,7 @@ object Comment
 
     def main(args: Array[String]): Unit =
     {
-        val av = "1436642"
+        val av = "8456738"
 
         //        getCommentAfter(av, new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse("2017-08-14 19:01")).onComplete
         //        {
@@ -340,11 +415,17 @@ object Comment
         //            case Failure(error) => println(error)
         //        }
 
-        getCommentPages(av, 1 to 100).onComplete
-        {
-            case Success(x) => println(s"${x.length}\n$x")
-            case Failure(error) => println(error)
-        }
+        getAllComment(av)
+            .map(c => {
+                println(c.map(_.reply_count).sum + c.length)
+                println(c.map(_.lv).diff((1 to c.head.lv).reverse))
+                Comment.flatten(c, av.toInt)
+            })
+            .onComplete{
+                case Success(x) =>
+                    println(x)
+                case Failure(error) => println(error)
+            }
 
     }
 }

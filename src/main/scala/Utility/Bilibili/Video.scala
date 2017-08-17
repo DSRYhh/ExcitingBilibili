@@ -15,6 +15,7 @@ import org.jsoup.Jsoup
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.matching.Regex
 
 
@@ -50,8 +51,50 @@ case class VideoViewInfo(aid : Int,
                          no_reprint : Int,
                          copyright : Int)
 
-case class VideoInfo (viewInfo : VideoViewInfo,
-                      basicInfo : VideoBaiscInfo)
+case class flatVideoInfo(av : String,
+                         title : String,
+                         upName : String,
+                         upMid : Int,
+                         createTime : String,
+                         zone : String,
+                         subZone : String,
+                         cid : String,
+                         aid : Int,
+                         view : Int,
+                         danmaku : Int,
+                         reply : Int,
+                         favorite : Int,
+                         coin : Int,
+                         share : Int,
+                         now_rank : Int,
+                         his_rank : Int,
+                         like : Int,
+                         no_reprint : Int,
+                         copyright : Int)
+object flatVideoInfo {
+    def build(viewInfo: VideoViewInfo, basicInfo : VideoBaiscInfo) : flatVideoInfo = {
+        flatVideoInfo(basicInfo.av,
+            basicInfo.title,
+            basicInfo.upName,
+            basicInfo.upMid,
+            basicInfo.createTime.toString,
+            basicInfo.zone,
+            basicInfo.subZone,
+            basicInfo.cid,
+            viewInfo.aid,
+            viewInfo.view,
+            viewInfo.danmaku,
+            viewInfo.reply,
+            viewInfo.favorite,
+            viewInfo.coin,
+            viewInfo.share,
+            viewInfo.now_rank,
+            viewInfo.his_rank,
+            viewInfo.like,
+            viewInfo.no_reprint,
+            viewInfo.copyright)
+    }
+}
 
 object Video
 {
@@ -63,13 +106,13 @@ object Video
     implicit val materializer = ActorMaterializer()
 
 
-    def getVideoInfo(av : String) : Future[Option[VideoInfo]] = {
+    def getVideoInfo(av : String) : Future[Option[flatVideoInfo]] = {
 
         getViewInfo(av).flatMap(viewRes => {
             viewRes.code match {
                 case 0 =>
                     getBasicInfo(av).map( basicinfo =>
-                        Some(VideoInfo(viewRes.data, basicinfo)))
+                        Some(flatVideoInfo.build(viewRes.data, basicinfo)))
                 case _ => Future(None)
             }
         })

@@ -3,21 +3,22 @@ package Utility.Bilibili
 import java.text.SimpleDateFormat
 import java.util.Date
 
-import Utility.Bilibili.Video.{materializer, system}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model.HttpMethods.GET
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.{HttpEncodingRange, HttpEncodings}
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Flow, Source}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import org.jsoup.select.Elements
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.concurrent.duration._
+import scala.language.postfixOps
+import scala.util.{Failure, Success, Try}
 
 /**
   * Created by hyh on 2017/8/15.
@@ -30,7 +31,10 @@ object Newlist
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
 
-    def getNewList(date: Date, typeid: Int, page: Int): Future[(List[Int], Int)] =
+    private val pool =
+        Http().cachedHostConnectionPool[Int]("www.bilibili.com")
+
+    private def getNewList(date: Date, typeid: Int, page: Int): Future[(List[Int], Int)] =
     {
         val queryParams = Map("date" -> dateToString(date),
             "typeid" -> typeid.toString,
@@ -68,6 +72,7 @@ object Newlist
       * @param requestUri the page containing the new video list
       * @return AV number of each video in the list and the end page number
       */
+//    @deprecated("Source based HTTP request is recommended")
     private def getNewList(requestUri: Uri): Future[(List[Int], Int)] =
     {
         val responseFuture: Future[HttpResponse] =
@@ -97,6 +102,54 @@ object Newlist
             })
     }
 
+    def getNewLists(pages: Range): Future[List[(List[Int], Int)]] =
+    {
+        import akka.http.scaladsl.model.headers
+
+        val user_agent = headers.`User-Agent`("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36")
+        val accept = headers.`Accept-Encoding`(HttpEncodingRange(HttpEncodings.gzip))
+
+        val requests =
+            for (pageCount <- pages)
+                yield (HttpRequest(GET, baseUri.withQuery(Uri.Query("page" -> pageCount.toString)), headers = List(accept, user_agent)), pageCount)
+
+        Source(requests)
+            .via(pool)
+            .via(Flow[(Try[HttpResponse], Int)].map(result =>
+            {
+                result._1 match
+                {
+                    case Success(response) =>
+                        Gzip.decodeMessage(response)
+                            .entity
+                            .toStrict(StrictWaitingTime)(materializer)
+                            .map(_.data.utf8String)
+                            .map(htmlString =>
+                            {
+                                val doc = Jsoup.parse(htmlString)
+
+                                import scala.collection.JavaConverters._
+                                val avList: List[Int] = doc.select("div.new_list")
+                                    .select("ul.vd_list")
+                                    .select("li.l1")
+                                    .asScala
+                                    .map(parseListElement)
+                                    .toList
+
+                                val test = doc.select("a.p.endPage").text()
+                                val endPage: Int = doc.select("a.p.endPage").text().toInt
+
+                                (avList, endPage)
+                            })
+                    case Failure(error) => throw error
+                }
+            })).mapAsync(1)(identity).
+            runFold(List[(List[Int], Int)]())((oriList, coming) =>
+            {
+                oriList :+ coming
+            })
+    }
+
     private def parseListElement(li: Element): Int =
     {
         val avLink = li.select("a.preview").attr("href")
@@ -117,7 +170,7 @@ object Newlist
 
     def main(args: Array[String]): Unit =
     {
-        getNewList(baseUri).onComplete
+        getNewLists(3 to 10).onComplete
         {
             case Failure(error) => println(error)
             case Success(x) => println(x)

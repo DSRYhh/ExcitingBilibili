@@ -151,6 +151,7 @@ object Comment
     private val pool =
         Http().cachedHostConnectionPool[Int]("api.bilibili.cn")
 
+
     def getCommentBefore(av: String, date: Date): Future[List[Comment]] =
     {
         throw new NotImplementedError() //TODO implement

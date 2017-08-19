@@ -102,8 +102,8 @@ object Video
     val baseInfoUri = Uri("http://www.bilibili.com/video")
     val viewInfoUri = Uri("http://api.bilibili.com/archive_stat/stat")
 
-    implicit val system = ActorSystem()
-    implicit val materializer = ActorMaterializer()
+//    implicit val system = ActorSystem()
+//    implicit val materializer = ActorMaterializer()
 
 
     def getVideoInfo(av : String) : Future[Option[flatVideoInfo]] = {

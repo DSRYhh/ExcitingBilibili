@@ -1,7 +1,9 @@
 package Utility.Bilibili
 
+import java.io.{BufferedWriter, File, FileWriter}
 import java.util.Date
 
+import Exception.{ParseCommentException, VideoNotExistException}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods._
@@ -13,6 +15,8 @@ import io.circe.generic.auto._
 import io.circe.parser.decode
 import io.circe.{Decoder, HCursor}
 
+import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
@@ -88,30 +92,32 @@ case class Comment(mid: Int,
 }
 
 
-case class flatComment(av : Int,
-                        mid: Int,
-                        lv: Int,
-                        fbid: String, //feedback id
-                        ad_check: Int,
-                        good: Int,
-                        isgood: Int,
-                        msg: String,
-                        device: String,
-                        create: Int,
-                        create_at: String,
-                        reply_count: Int,
-                        face: String,
-                        rank: Int,
-                        nick: String,
-                        current_exp: Int,
-                        current_level: Int,
-                        current_min: Int,
-                        next_exp: Int,
-                        sex : String,
-                        parentFeedBackId : String)
+case class flatComment(av: Int,
+                       mid: Int,
+                       lv: Int,
+                       fbid: String, //feedback id
+                       ad_check: Int,
+                       good: Int,
+                       isgood: Int,
+                       msg: String,
+                       device: String,
+                       create: Int,
+                       create_at: String,
+                       reply_count: Int,
+                       face: String,
+                       rank: Int,
+                       nick: String,
+                       current_exp: Int,
+                       current_level: Int,
+                       current_min: Int,
+                       next_exp: Int,
+                       sex: String,
+                       parentFeedBackId: String)
+
 object flatComment
 {
-    def buildFromComment(comment : Comment, pFbid : String, av : Int) : flatComment = {
+    def buildFromComment(comment: Comment, pFbid: String, av: Int): flatComment =
+    {
         flatComment(av,
             comment.mid,
             comment.lv,
@@ -141,13 +147,17 @@ case class UserLevel(current_exp: Int,
                      current_min: Int,
                      next_exp: Int)
 
+case class ErrorCommentResponse(code: Int,
+                                message: String,
+                                ts: Int)
+
 object Comment
 {
     val baseUri = Uri("http://api.bilibili.cn/feedback")
 
-    private implicit val system = ActorSystem("test", ConfigFactory.load())
-    private implicit val materializer = ActorMaterializer()
-    private implicit val executor = system.dispatchers.lookup("my-blocking-dispatcher")
+//    private implicit val system = ActorSystem("test", ConfigFactory.load())
+//    private implicit val materializer = ActorMaterializer()
+
     private val pool =
         Http().cachedHostConnectionPool[Int]("api.bilibili.cn")
 
@@ -243,32 +253,70 @@ object Comment
                     case Some(l) => l
                     case None => Nil
                 }
-                //                for (pageCount <- 2 to firstPage.pages)
-                //                {
-                //                    Await.ready(getCommentPage(av, pageCount), Duration.Inf).value.get match {
-                //                        case scala.util.Success(page) => page.list match {
-                //                            case Some(newlist) =>
-                //                                list = list ::: newlist
-                //                            case None => Nil
-                //                        }
-                //                        case scala.util.Failure(error) => error
-                //                    }
-                //                }
 
-                //TODO: know issue: akka.stream.BufferOverflowException when av = 1436642
                 getCommentPages(av, 2 to firstPage.pages).map(list ::: _)
-
-                //                Future.sequence((2 to firstPage.pages).map
-                //                { count =>
-                //                    getCommentPage(av, count)
-                //                }).map(_.toList
-                //                    .map(_.list)
-                //                    .map
-                //                    { case Some(l) => l case None => Nil })
-                //                    .map(_.flatten)
-                //                    .map(list ::: _)
             }
         })
+    }
+
+    @deprecated
+    def getAllComment(avList: Range) =
+    {
+        val requests =
+            for (av <- avList)
+                yield (commentPageRequestBuilder(av.toString, 1), av)
+
+        Source(requests)
+            .via(pool)
+            .via(Flow[(Try[HttpResponse], Int)].map(firstPages =>
+            {
+                firstPages._1 match
+                {
+                    case Success(response) =>
+                        response.entity
+                            .toStrict(StrictWaitingTime)
+                            .map(_.data.utf8String)
+                            .map(parseCommentPage(_, firstPages._2.toString, 1))
+                            .map(fp => (fp, firstPages._2))
+                    case Failure(error) => throw error
+                }
+            })).mapAsync(1)(identity)
+            .via(Flow[(CommentPage, Int)].map(firstPagePair =>
+            {
+                val firstPage: CommentPage = firstPagePair._1
+                val av: Int = firstPagePair._2
+                if (firstPage.results == 0)
+                {
+                    Future
+                    {
+                        (Nil, Source.empty)
+                    }
+                }
+                else if (firstPage.pages == 1)
+                {
+                    Future
+                    {
+                        firstPage.list match
+                        {
+                            case Some(list) => (list, Source.empty)
+                            case None => (Nil, Source.empty)
+                        }
+                    }
+                }
+                else //more than one page
+                {
+                    val firstList: List[Comment] = firstPage.list match
+                    {
+                        case Some(l) => l
+                        case None => Nil
+                    }
+
+                    val requests = for (pageCount <- 2 to firstPage.pages)
+                        yield (commentPageRequestBuilder(av.toString, pageCount), pageCount)
+
+                    (firstList, Source(requests))
+                }
+            }))
     }
 
     def getLatestComment(page: CommentPage): Option[Comment] =
@@ -313,7 +361,7 @@ object Comment
             .map(_.entity)
             .flatMap(_.toStrict(StrictWaitingTime)(materializer))
             .map(_.data.utf8String)
-            .map(parseCommentPage)
+            .map(parseCommentPage(_, av, pageNum))
     }
 
     def getCommentPages(av: String, pages: Range): Future[List[Comment]] =
@@ -334,7 +382,7 @@ object Comment
                         response.entity
                             .toStrict(StrictWaitingTime)
                             .map(_.data.utf8String)
-                            .map(parseCommentPage)
+                            .map(parseCommentPage(_, av, result._2))
                             .map(_.list).map
                         {
                             case Some(l) => l match
@@ -353,23 +401,25 @@ object Comment
             })
     }
 
-    def flatten(list: List[Comment], av : Int) : List[flatComment] = {
-//        list.flatMap(comment => {
-//            comment.reply match {
-//                case Some(l) => l match {
-//                    case Nil => parents ::: List(flatComment.buildFromComment(comment, parentFbid))
-//                    case replayList => flatten(replayList,
-//                        parents ::: List(flatComment.buildFromComment(comment, parentFbid)),
-//                        comment.fbid)
-//                }
-//                case None => parents ::: List(flatComment.buildFromComment(comment, parentFbid))
-//            }
-//        })
+    def flatten(list: List[Comment], av: Int): List[flatComment] =
+    {
+        //        list.flatMap(comment => {
+        //            comment.reply match {
+        //                case Some(l) => l match {
+        //                    case Nil => parents ::: List(flatComment.buildFromComment(comment, parentFbid))
+        //                    case replayList => flatten(replayList,
+        //                        parents ::: List(flatComment.buildFromComment(comment, parentFbid)),
+        //                        comment.fbid)
+        //                }
+        //                case None => parents ::: List(flatComment.buildFromComment(comment, parentFbid))
+        //            }
+        //        })
         list.map(flatComment.buildFromComment(_, NoneParentFeedBackId, av)) :::
-        list.flatMap(comment => comment.reply match {
-            case Some(l) => l.map(flatComment.buildFromComment(_, comment.fbid, av))
-            case None => Nil
-        })
+            list.flatMap(comment => comment.reply match
+            {
+                case Some(l) => l.map(flatComment.buildFromComment(_, comment.fbid, av))
+                case None => Nil
+            })
     }
 
     private def commentPageRequestBuilder(av: String, pageNum: Int = 1) =
@@ -379,7 +429,10 @@ object Comment
         HttpRequest(GET, uri = s"/feedback?aid=$av&page=${pageNum.toString}")
     }
 
-    private def parseCommentPage(jsonString: String): CommentPage =
+
+    @throws(classOf[VideoNotExistException])
+    @throws(classOf[ParseCommentException])
+    private def parseCommentPage(jsonString: String, av: String, page: Int): CommentPage =
     {
         implicit val decodeUserLevel: Decoder[UserLevel] = (c: HCursor) => for
         {
@@ -401,32 +454,58 @@ object Comment
             case Right(comment) =>
                 comment
             case Left(error) =>
-                throw error
+                decode[ErrorCommentResponse](jsonString) match
+                {
+                    case Right(_) => throw VideoNotExistException(av)
+                    case Left(_) => throw ParseCommentException(av, page, error)
+                }
         }
     }
 
     def main(args: Array[String]): Unit =
     {
-        val av = "8456738"
 
-        //        getCommentAfter(av, new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse("2017-08-14 19:01")).onComplete
-        //        {
-        //            case Success(list) =>
-        //                list.foreach(println(_))
-        //            case Failure(error) => println(error)
-        //        }
 
-        getAllComment(av)
-            .map(c => {
-                println(c.map(_.reply_count).sum + c.length)
-                println(c.map(_.lv).diff((1 to c.head.lv).reverse))
-                Comment.flatten(c, av.toInt)
-            })
-            .onComplete{
-                case Success(x) =>
-                    println(x)
-                case Failure(error) => println(error)
-            }
+        val fbidSet = new mutable.HashSet[String]()
+        (10000 to 11000).toList.foreach(av =>
+        {
+
+            Await.ready(getAllComment(av.toString), Duration.Inf)
+
+//            getCommentPages(av.toString, 1 to 1)
+                .map(c =>
+                {
+//                    println(c.map(_.reply_count).sum + c.length)
+//                    println(c.map(_.lv).diff((1 to c.head.lv).reverse))
+                    Comment.flatten(c, av.toInt)
+                })
+                .onComplete
+                {
+                    case Success(x) =>
+                        x.foreach(c => {
+                            if (fbidSet.contains(c.fbid))
+                            {
+                                println(s"ERROR in ${c.fbid}")
+                                val filepath = "D:\\Users Documents\\Desktop\\log.txt"
+                                val file = new File(filepath)
+                                val bw = new BufferedWriter(new FileWriter(file))
+                                bw.write(s"ERROR in ${c.fbid}")
+                                bw.close()
+                            }
+                            else
+                            {
+                                fbidSet.add(c.fbid)
+                                println(s"av : $av complete. Set size : ${fbidSet.size}. fbid : ${c.fbid}")
+                            }
+                        })
+                    case Failure(error) => error match
+                    {
+                        case nullVideo: VideoNotExistException => //println(s"${nullVideo.av} does not exist.")
+                        case unknownError => //println(unknownError)
+                    }
+                }
+        })
+
 
     }
 }

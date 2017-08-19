@@ -25,8 +25,8 @@ object danmu
 {
     val baseUri = Uri("http://comment.bilibili.com") //example: http://comment.bilibili.com/21698533.xml
 
-    implicit val system = ActorSystem()
-    implicit val materializer = ActorMaterializer()
+//    implicit val system = ActorSystem()
+//    implicit val materializer = ActorMaterializer()
 
     def getDanmu(cid : String) : Future[List[String]] = {
         val requestUri = Uri(baseUri.toString() + s"/$cid.xml")

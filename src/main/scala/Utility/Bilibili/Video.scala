@@ -1,4 +1,5 @@
 package Utility.Bilibili
+import java.sql.Timestamp
 import java.util.Date
 
 import akka.actor.ActorSystem
@@ -14,7 +15,6 @@ import org.jsoup.Jsoup
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.matching.Regex
 
@@ -38,6 +38,8 @@ case class ViewInfoResponse(code : Int,
                             message : String,
                             ttl : Int)
 
+case class ErrorViewInfo(code : Int, message : String)
+
 case class VideoViewInfo(aid : Int,
                          view : Int,
                          danmaku : Int,
@@ -55,7 +57,7 @@ case class flatVideoInfo(av : String,
                          title : String,
                          upName : String,
                          upMid : Int,
-                         createTime : String,
+                         createTime : Timestamp,
                          zone : String,
                          subZone : String,
                          cid : String,
@@ -77,7 +79,7 @@ object flatVideoInfo {
             basicInfo.title,
             basicInfo.upName,
             basicInfo.upMid,
-            basicInfo.createTime.toString,
+            new Timestamp(basicInfo.createTime.getTime),
             basicInfo.zone,
             basicInfo.subZone,
             basicInfo.cid,
@@ -102,20 +104,20 @@ object Video
     val baseInfoUri = Uri("http://www.bilibili.com/video")
     val viewInfoUri = Uri("http://api.bilibili.com/archive_stat/stat")
 
-//    implicit val system = ActorSystem()
-//    implicit val materializer = ActorMaterializer()
+    implicit val system = ActorSystem()
+    implicit val materializer = ActorMaterializer()
 
 
     def getVideoInfo(av : String) : Future[Option[flatVideoInfo]] = {
 
-        getViewInfo(av).flatMap(viewRes => {
-            viewRes.code match {
-                case 0 =>
-                    getBasicInfo(av).map( basicinfo =>
-                        Some(flatVideoInfo.build(viewRes.data, basicinfo)))
-                case _ => Future(None)
+        getViewInfo(av).flatMap{
+            case Right(viewRes) => {
+                getBasicInfo(av).map( basicinfo =>
+                    Some(flatVideoInfo.build(viewRes.data, basicinfo)))
             }
-        })
+            case Left(_) =>
+                Future(None)
+        }
     }
 
     private def getBasicInfo(av : String) : Future[VideoBaiscInfo] = {
@@ -138,29 +140,39 @@ object Video
         responseFuture
             .map(Gzip.decodeMessage(_))
             .map(_.entity)
-            .flatMap(_.toStrict(1 seconds)(materializer)) //TODO network error, and set the timeout
+            .flatMap(_.toStrict(StrictWaitingTime)(materializer)) //TODO network error, and set the timeout
             .map(_.data)
             .map(_.utf8String)
             .map((htmlString: String) =>
             {
                 val doc = Jsoup.parse(htmlString)
 
-                val upInfo = doc.body().select("div.upinfo").select("div.r-info").first()
-                val upName = upInfo.select("a.name").text()
-                val upMid = upInfo.select("a.message").attr("mid")
+                val upInfoBlock = doc.body().select("div.upinfo").select("div.r-info")
+                val upInfo = upInfoBlock.size() match {
+                    case 0 => (NullUpName, NullUpMid)
+                    case _ => (upInfoBlock.select("a.name").text(), upInfoBlock.select("a.message").attr("mid"))
+                }
+                val upName = upInfo._1
+                val upMid = upInfo._2
 
                 val pageTitle = doc.title()
                 val videoTitle = doc.body().select("div.v-title").select("h1").text()
-                val videoPattern  = s"${videoTitle}_(\\S+?)_(\\S+?)_bilibili_哔哩哔哩".r
+                val videoPattern  = s"${Regex.quote(videoTitle)}_(\\S+?)_(\\S+?)_bilibili_哔哩哔哩".r
                 val matchResult = videoPattern.findAllIn(pageTitle)
                 val subZone = matchResult.group(1)
                 val zone = matchResult.group(2)
 
-                val createTime = doc.body().select("div.main-inner").select("div.tminfo").first().select("time").text()
+                val createTime = doc.body().select("div.main-inner").select("div.tminfo").first().select("time").text() match {
+                    case "" => NullCreateTime
+                    case time => time
+                }
 
                 val pattern : Regex = "cid=([0-9]+?)&".r
-                val cidMatchResult = pattern.findAllIn(doc.body().toString)
-                val cid = cidMatchResult.group(1)
+                val cidMatchResult = pattern.findFirstMatchIn(doc.body().toString)
+                val cid = cidMatchResult match {
+                    case Some(mat) => mat.group(1)
+                    case None => NullCidSymbol
+                }
 
 
                 VideoBaiscInfo(av,
@@ -174,7 +186,7 @@ object Video
             })
     }
 
-    private def getViewInfo(av : String) : Future[ViewInfoResponse] = {
+    private def getViewInfo(av : String) : Future[Either[ErrorViewInfo ,ViewInfoResponse]] = {
         av.foreach((c) => if (!c.isDigit)
         {
             throw new IllegalArgumentException
@@ -187,16 +199,20 @@ object Video
 
         responseFuture
             .map(_.entity)
-            .flatMap(_.toStrict(1 seconds)(materializer)) //TODO network error, and set the timeout
+            .flatMap(_.toStrict(StrictWaitingTime)(materializer))
             .map(_.data)
             .map(_.utf8String)
             .map((jsonString : String) =>
             {
                 decode[ViewInfoResponse](jsonString) match
                 {
-                    case Right(response) => response
+                    case Right(response) =>
+                        Right(response)
                     case Left(error) =>
-                        throw error
+                        decode[ErrorViewInfo](jsonString) match {
+                            case Right(errorResponse) => Left(errorResponse)
+                            case Left(_) => throw error
+                        }
                 }
             })
     }

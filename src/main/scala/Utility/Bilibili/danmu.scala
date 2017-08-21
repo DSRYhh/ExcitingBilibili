@@ -21,14 +21,19 @@ import scala.util.{Failure, Success}
 /**
   * Created by hyh on 2017/8/15.
   */
+case class danmu(content : String, cid : Int, av : Int)
+
+
 object danmu
 {
     val baseUri = Uri("http://comment.bilibili.com") //example: http://comment.bilibili.com/21698533.xml
 
-//    implicit val system = ActorSystem()
-//    implicit val materializer = ActorMaterializer()
+    implicit val system = ActorSystem()
+    implicit val materializer = ActorMaterializer()
 
     def getDanmu(cid : String) : Future[List[String]] = {
+        if (cid.equals(NullCidSymbol)) return Future(Nil)
+
         val requestUri = Uri(baseUri.toString() + s"/$cid.xml")
 
         import akka.http.scaladsl.model.headers
@@ -49,7 +54,6 @@ object danmu
             .map(xmlString => {
                 (xml.XML.loadString(xmlString) \ "d").map(_.text).toList
             })
-
     }
 
 

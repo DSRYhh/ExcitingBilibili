@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS Comments (
   next_exp         INT          NOT NULL,
   sex              VARCHAR(255) NOT NULL,
   parentFeedBackId VARCHAR(255) NOT NULL,
-  insertTime       TIMESTAMP    NOT NULL
+  insertTime       TIMESTAMP    NOT NULL,
+  PRIMARY KEY (fbid)
 );
 CREATE TABLE IF NOT EXISTS Video (
   av         INT           NOT NULL,
@@ -44,7 +45,7 @@ CREATE TABLE IF NOT EXISTS Video (
   no_reprINT INT           NOT NULL,
   copyright  INT           NOT NULL,
   insertTime TIMESTAMP     NOT NULL,
-    PRIMARY KEY (av)
+  PRIMARY KEY (av)
 );
 
 CREATE TABLE IF NOT EXISTS Danmu (
@@ -52,4 +53,11 @@ CREATE TABLE IF NOT EXISTS Danmu (
   av         INT       NOT NULL,
   danmu      TEXT      NOT NULL,
   insertTime TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS TraversalLog (
+  index       SERIAL,
+  av          INT       NOT NULL,
+  operateTime TIMESTAMP NOT NULL,
+  PRIMARY KEY (index)
 );

@@ -1,4 +1,4 @@
-package Actors.Messages
+package Actors
 
 import akka.actor.Actor
 
@@ -7,5 +7,7 @@ import akka.actor.Actor
   */
 class InfoUpdater extends Actor
 {
-
+    override def receive: Receive = {
+        throw new NotImplementedError()
+    }
 }

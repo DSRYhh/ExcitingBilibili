@@ -63,7 +63,7 @@ case class Comment(mid: Int,
                    isgood: Int,
                    msg: String,
                    device: String,
-                   create: Int,
+                   create: Long,
                    create_at: String,
                    reply_count: Int,
                    face: String,
@@ -101,7 +101,7 @@ case class flatComment(av: Int,
                        isgood: Int,
                        msg: String,
                        device: String,
-                       create: Int,
+                       create: Long,
                        create_at: String,
                        reply_count: Int,
                        face: String,
@@ -155,8 +155,8 @@ object Comment
 {
     val baseUri = Uri("http://api.bilibili.cn/feedback")
 
-//    private implicit val system = ActorSystem("test", ConfigFactory.load())
-//    private implicit val materializer = ActorMaterializer()
+    private implicit val system = ActorSystem("test", ConfigFactory.load())
+    private implicit val materializer = ActorMaterializer()
 
     private val pool =
         Http().cachedHostConnectionPool[Int]("api.bilibili.cn")
@@ -471,8 +471,6 @@ object Comment
         {
 
             Await.ready(getAllComment(av.toString), Duration.Inf)
-
-//            getCommentPages(av.toString, 1 to 1)
                 .map(c =>
                 {
 //                    println(c.map(_.reply_count).sum + c.length)

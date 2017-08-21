@@ -18,7 +18,8 @@ libraryDependencies ++= Seq(
     "org.scala-lang" % "scala-library" % scalaVersion.value,
     "org.scala-lang" % "scala-reflect" % scalaVersion.value,
     "com.zaxxer" % "HikariCP" % "2.6.1",
-    "org.jsoup" % "jsoup" % "1.8.3"
+    "org.jsoup" % "jsoup" % "1.8.3",
+    "org.apache.commons" % "commons-text" % "1.1"
 )
 
 

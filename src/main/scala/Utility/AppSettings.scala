@@ -22,4 +22,10 @@ object AppSettings
     val slickConnectTimeout: Int = slickConfig.getInt("connectTimeout")
     val slickIdleTimeout: Int = slickConfig.getInt("idleTimeout")
     val slickMaxLifetime: Int = slickConfig.getInt("maxLifetime")
+
+    val updateStrategy : Config = config.getConfig("bilibili").getConfig("update_strategy")
+    val commentTrackingCount : Int = updateStrategy.getInt("comment_keep_update_count")
+
+    val httpConfig : Config = config.getConfig("bilibili").getConfig("http")
+    val StrictWaitingTime: Int = httpConfig.getInt("strict_waiting_time")
 }

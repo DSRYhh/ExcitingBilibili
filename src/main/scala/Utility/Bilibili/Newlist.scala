@@ -28,8 +28,8 @@ object Newlist
     private val baseUri: Uri = Uri("http://www.bilibili.com/newlist.html")
 
 
-//    implicit val system = ActorSystem()
-//    implicit val materializer = ActorMaterializer()
+    implicit val system = ActorSystem()
+    implicit val materializer = ActorMaterializer()
 
     private val pool =
         Http().cachedHostConnectionPool[Int]("www.bilibili.com")

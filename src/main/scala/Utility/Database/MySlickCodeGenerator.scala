@@ -21,7 +21,7 @@ object MySlickCodeGenerator
     private val slickDriver = "slick.jdbc.PostgresProfile"
     private val jdbcDriver = "org.postgresql.Driver"
     private val url = AppSettings.slickUrl
-    private val outputFolder = "src/main/scala/Utility/Database"
+    private val outputFolder = "src/main/scala"
     private val pkg = "Utility.Database"
     private val user = AppSettings.slickUser
     private val password = AppSettings.slickPassword

@@ -16,7 +16,14 @@ package object Bilibili
         })
     }
 
-    val StrictWaitingTime : FiniteDuration = 10 seconds
+    val StrictWaitingTime : FiniteDuration = AppSettings.StrictWaitingTime second
 
     val NoneParentFeedBackId : String = "-1"
+
+    val NullCidSymbol : String = "-1"
+
+    val NullUpName : String = "null"
+    val NullUpMid : String = "-1"
+
+    val NullCreateTime : String = "1970-01-01 00:00"
 }

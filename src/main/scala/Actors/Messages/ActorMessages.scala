@@ -5,10 +5,11 @@ package Actors.Messages
   */
 sealed trait ActorMessages
 
-case object LaunchNewListMonitor extends ActorMessages
-case object LaunchTravseral extends ActorMessages
+case object InitialLaunch extends ActorMessages
 
 case class AvList(avList : List[Int]) extends ActorMessages
+
+case class HandleVideo(av : Int) extends ActorMessages
 
 case class UpdateVideo(av : Int) extends ActorMessages
 case class InsertVideo(av : Int) extends ActorMessages

@@ -1,7 +1,7 @@
 package Actors
 
 import Actors.Messages.{HandleComplete, HandleError, InsertVideo, UpdateVideo}
-import Utility.Bilibili.{Comment, Video}
+import Utility.Bilibili.{Comment, Video, danmu}
 import Utility.{Bilibili, Database}
 import akka.actor.Actor
 import org.slf4j.LoggerFactory
@@ -48,11 +48,21 @@ class InfoUpdater extends Actor
                     basicInfo.cid match {
                         case Bilibili.NullCidSymbol =>
                             updateComment(maxLv, av)
-                            //TODO update danmu
                         case cid =>
-                            Database.updateCid(av, cid)
-                            updateComment(maxLv, av)
-                            //TODO update danmu, combine two futures
+                            Future {
+                                Database.updateCid(av, cid)
+                                updateComment(maxLv, av)
+                                danmu.getDanmu(cid).map(_.foreach(entry => {
+                                    Database.insertDanmu(cid.toInt, av, entry)
+                                }))
+                            }.onComplete{
+                                case Success(_) =>
+                                    context.parent ! HandleComplete(av)
+                                    logger.info(s"Update $av complete")
+                                case Failure(_) =>
+                                    context.parent ! HandleError(av)
+                                    logger.info(s"Update $av failure")
+                            }
                     }
                 })
             })
@@ -72,7 +82,4 @@ class InfoUpdater extends Actor
         })
     }
 
-    private def updateDanmu(av : Int, cid : Int) = {
-
-    }
 }

@@ -13,6 +13,7 @@ libraryDependencies ++= Seq(
     "com.typesafe.slick" % "slick_2.12" % "3.2.0",
     "com.typesafe.slick" % "slick-codegen_2.12" % "3.2.0",
     "org.slf4j" % "slf4j-nop" % "1.7.19",
+    "ch.qos.logback" % "logback-classic" % "1.2.3" % "test",
     "org.postgresql" % "postgresql" % "9.3-1100-jdbc4",
     "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6",
     "org.scala-lang" % "scala-library" % scalaVersion.value,

@@ -1,9 +1,10 @@
 package Actors
 
-import Actors.Messages.{HandleComplete, HandleVideo, InitialLaunch}
+import Actors.Messages.{HandleComplete, HandleError, HandleVideo, InitialLaunch}
 import Utility.{AppSettings, Database}
 import akka.actor.{Actor, Props}
 import org.slf4j.LoggerFactory
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
@@ -44,6 +45,8 @@ class Traversal extends Actor
                     handleVideo(1)
                 }
             })
+        case HandleError(av) =>
+            handleVideo(av)
         case unknown @ _ =>
             logger.warn("Unknown message: " + unknown + "  in " + context.self.path.name + " from " + context.sender().path.name)
 

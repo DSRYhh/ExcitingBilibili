@@ -2,6 +2,7 @@ package Utility.Bilibili
 
 import java.util.zip.{Inflater, InflaterInputStream}
 
+import Utility.{AppSettings, Concurrent}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods.GET
@@ -28,8 +29,8 @@ object danmu
 {
     val baseUri = Uri("http://comment.bilibili.com") //example: http://comment.bilibili.com/21698533.xml
 
-    implicit val system = ActorSystem()
-    implicit val materializer = ActorMaterializer()
+    private implicit val system : ActorSystem = Concurrent.system
+    private implicit val materializer : ActorMaterializer = Concurrent.materializer
 
     def getDanmu(cid : String) : Future[List[String]] = {
         if (cid.equals(NullCidSymbol)) return Future(Nil)
@@ -42,11 +43,11 @@ object danmu
         val accept = headers.Accept(MediaRange(MediaTypes.`text/xml`))
 
         val responseFuture: Future[HttpResponse] =
-            Http(system).singleRequest(HttpRequest(GET, uri = requestUri, headers = List(user_agent, accept_encoding, accept)))
+            Http().singleRequest(HttpRequest(GET, uri = requestUri, headers = List(user_agent, accept_encoding, accept)))
 
         responseFuture
             .map(_.entity)
-            .flatMap(_.toStrict(1 seconds)(materializer)) // TODO set timeout
+            .flatMap(_.toStrict(AppSettings.StrictWaitingTime second))
             .map(_.dataBytes)
             .map(_.runWith(StreamConverters.asInputStream()))
             .map(new InflaterInputStream(_, new Inflater(true)))
@@ -54,17 +55,5 @@ object danmu
             .map(xmlString => {
                 (xml.XML.loadString(xmlString) \ "d").map(_.text).toList
             })
-    }
-
-
-    def main(args: Array[String]): Unit =
-    {
-        getDanmu("17713827").onComplete
-        {
-            case Success(x) => print(x)
-            case Failure(error)=> println(error)
-        }
-
-
     }
 }

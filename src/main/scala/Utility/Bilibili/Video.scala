@@ -2,6 +2,7 @@ package Utility.Bilibili
 import java.sql.Timestamp
 import java.util.Date
 
+import Utility.Concurrent
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
@@ -101,11 +102,11 @@ object flatVideoInfo {
 object Video
 {
 
-    val baseInfoUri = Uri("http://www.bilibili.com/video")
-    val viewInfoUri = Uri("http://api.bilibili.com/archive_stat/stat")
+    private val baseInfoUri = Uri("http://www.bilibili.com/video")
+    private val viewInfoUri = Uri("http://api.bilibili.com/archive_stat/stat")
 
-    implicit val system = ActorSystem()
-    implicit val materializer = ActorMaterializer()
+    private implicit val system = Concurrent.system
+    private implicit val materializer = Concurrent.materializer
 
 
     def getVideoInfo(av : String) : Future[Option[flatVideoInfo]] = {
@@ -134,12 +135,12 @@ object Video
         val accept_encoding = headers.`Accept-Encoding`(HttpEncodingRange(HttpEncoding("gzip, deflate, br")))
 
         val responseFuture: Future[HttpResponse] =
-            Http(system).singleRequest(HttpRequest(GET, uri = requestUri, headers = List(user_agent, accept_encoding)))
+            Http().singleRequest(HttpRequest(GET, uri = requestUri, headers = List(user_agent, accept_encoding)))
 
         responseFuture
             .map(Gzip.decodeMessage(_))
             .map(_.entity)
-            .flatMap(_.toStrict(StrictWaitingTime)(materializer)) //TODO network error, and set the timeout
+            .flatMap(_.toStrict(StrictWaitingTime))
             .map(_.data)
             .map(_.utf8String)
             .map((htmlString: String) =>
@@ -214,26 +215,5 @@ object Video
                         }
                 }
             })
-    }
-
-    def main(args: Array[String]): Unit =
-    {
-//        getBasicInfo("6701825").onComplete
-//        {
-//            case Success(x) => println(x)
-//            case Failure(error) => println(error)
-//        }
-//        getViewInfo("6701825").onComplete
-//        {
-//            case Success(x) => println(x)
-//            case Failure(error) => println(error)
-//        }
-
-
-
-        getVideoInfo("6701825").map{
-            case Some(info) => println(info)
-            case None => println("Video not exists")
-        }
     }
 }

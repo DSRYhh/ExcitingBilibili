@@ -1,4 +1,5 @@
 import Actors.Manager
+import org.slf4j.LoggerFactory
 
 /**
   * Created by hyh on 2017/8/19.
@@ -8,8 +9,11 @@ import Actors.Manager
   */
 object Main
 {
+    private final val logger = LoggerFactory.getLogger(getClass)
+
     def main(args: Array[String]): Unit =
     {
-        Manager.start()
+        logger.info("hahahahahahah")
+//        Manager.start()
     }
 }

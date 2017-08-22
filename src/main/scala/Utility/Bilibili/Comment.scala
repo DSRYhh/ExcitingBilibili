@@ -1,22 +1,19 @@
 package Utility.Bilibili
 
-import java.io.{BufferedWriter, File, FileWriter}
 import java.util.Date
 
 import Exception.{ParseCommentException, VideoNotExistException}
-import Utility.AppSettings
+import Utility.{AppSettings, Concurrent}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Source}
-import com.typesafe.config.ConfigFactory
 import io.circe.generic.auto._
 import io.circe.parser.decode
 import io.circe.{Decoder, HCursor}
 
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -156,8 +153,8 @@ object Comment
 {
     val baseUri = Uri("http://api.bilibili.cn/feedback")
 
-    private implicit val system = ActorSystem("test", ConfigFactory.load())
-    private implicit val materializer = ActorMaterializer()
+    private implicit val system = Concurrent.system
+    private implicit val materializer = Concurrent.materializer
 
     private val pool =
         Http().cachedHostConnectionPool[Int]("api.bilibili.cn")
@@ -316,11 +313,11 @@ object Comment
 
         val requestUri: Uri = baseUri.withQuery(Uri.Query(queryParameters))
         val responseFuture: Future[HttpResponse] =
-            Http(system).singleRequest(HttpRequest(GET, uri = requestUri))
+            Http().singleRequest(HttpRequest(GET, uri = requestUri))
 
         responseFuture
             .map(_.entity)
-            .flatMap(_.toStrict(StrictWaitingTime)(materializer))
+            .flatMap(_.toStrict(StrictWaitingTime))
             .map(_.data.utf8String)
             .map(parseCommentPage(_, av, pageNum))
     }
@@ -423,47 +420,4 @@ object Comment
         }
     }
 
-    def main(args: Array[String]): Unit =
-    {
-
-        val fbidSet = new mutable.HashSet[String]()
-        (10000 to 11000).toList.foreach(av =>
-        {
-
-            Await.ready(getAllComment(av.toString), Duration.Inf)
-                .map(c =>
-                {
-//                    println(c.map(_.reply_count).sum + c.length)
-//                    println(c.map(_.lv).diff((1 to c.head.lv).reverse))
-                    Comment.flatten(c, av)
-                })
-                .onComplete
-                {
-                    case Success(x) =>
-                        x.foreach(c => {
-                            if (fbidSet.contains(c.fbid))
-                            {
-                                println(s"ERROR in ${c.fbid}")
-                                val filepath = "D:\\Users Documents\\Desktop\\log.txt"
-                                val file = new File(filepath)
-                                val bw = new BufferedWriter(new FileWriter(file))
-                                bw.write(s"ERROR in ${c.fbid}")
-                                bw.close()
-                            }
-                            else
-                            {
-                                fbidSet.add(c.fbid)
-                                println(s"av : $av complete. Set size : ${fbidSet.size}. fbid : ${c.fbid}")
-                            }
-                        })
-                    case Failure(error) => error match
-                    {
-                        case nullVideo: VideoNotExistException => //println(s"${nullVideo.av} does not exist.")
-                        case unknownError => //println(unknownError)
-                    }
-                }
-        })
-
-
-    }
 }

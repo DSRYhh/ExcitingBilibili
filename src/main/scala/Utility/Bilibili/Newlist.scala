@@ -3,6 +3,7 @@ package Utility.Bilibili
 import java.text.SimpleDateFormat
 import java.util.Date
 
+import Utility.{AppSettings, Concurrent}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
@@ -27,9 +28,8 @@ object Newlist
 {
     private val baseUri: Uri = Uri("http://www.bilibili.com/newlist.html")
 
-
-    implicit val system = ActorSystem()
-    implicit val materializer = ActorMaterializer()
+    private implicit val system = Concurrent.system
+    private implicit val materializer = Concurrent.materializer
 
     private val pool =
         Http().cachedHostConnectionPool[Int]("www.bilibili.com")
@@ -73,15 +73,15 @@ object Newlist
       * @return AV number of each video in the list and the end page number
       */
 //    @deprecated("Source based HTTP request is recommended")
-    private def getNewList(requestUri: Uri): Future[(List[Int], Int)] =
+    private def getNewList(requestUri: Uri) : Future[(List[Int], Int)] =
     {
         val responseFuture: Future[HttpResponse] =
-            Http(system).singleRequest(HttpRequest(GET, uri = requestUri))
+            Http().singleRequest(HttpRequest(GET, uri = requestUri))
 
         responseFuture
             .map(Gzip.decodeMessage(_))
             .map(_.entity)
-            .flatMap(_.toStrict(1 seconds)(materializer)) //TODO network error, and set the timeout
+            .flatMap(_.toStrict(AppSettings.StrictWaitingTime second))
             .map(_.data)
             .map(_.utf8String)
             .map((htmlString: String) =>
@@ -168,12 +168,4 @@ object Newlist
         new SimpleDateFormat("yyyy-MM-dd").format(date)
     }
 
-    def main(args: Array[String]): Unit =
-    {
-        getNewLists(3 to 10).onComplete
-        {
-            case Failure(error) => println(error)
-            case Success(x) => println(x)
-        }
-    }
 }

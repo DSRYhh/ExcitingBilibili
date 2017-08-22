@@ -20,14 +20,14 @@ class Manager extends Actor
     {
         case InitialLaunch =>
         {
-            context.child("NewListMonitor").getOrElse
-            {
-                context.actorOf(Props[NewListMonitor](new NewListMonitor), "NewListMonitor")
-            } ! InitialLaunch
-            context.child("CommentUpdater").getOrElse
-            {
-                context.actorOf(Props[CommentUpdater](new CommentUpdater), "CommentUpdater")
-            } ! InitialLaunch
+//            context.child("NewListMonitor").getOrElse
+//            {
+//                context.actorOf(Props[NewListMonitor](new NewListMonitor), "NewListMonitor")
+//            } ! InitialLaunch
+//            context.child("CommentUpdater").getOrElse
+//            {
+//                context.actorOf(Props[CommentUpdater](new CommentUpdater), "CommentUpdater")
+//            } ! InitialLaunch
             context.child("Traversal").getOrElse
             {
                 context.actorOf(Props[Traversal](new Traversal), "Traversal")
@@ -45,12 +45,12 @@ object Manager
     private final val logger = LoggerFactory.getLogger(getClass)
     val pool = new ThreadPoolExecutor(0, 4096, 60L, TimeUnit.SECONDS, new SynchronousQueue[Runnable]())
 
-    implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutorService(pool)
-    implicit val system = ActorSystem("system")
+    private implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutorService(pool)
+    private implicit val system = Utility.Concurrent.system
 
     val actorManager: ActorRef = system.actorOf(Props[Manager], "ActorManager")
 
-    def start() =
+    def start(): Unit =
     {
         actorManager ! InitialLaunch
 

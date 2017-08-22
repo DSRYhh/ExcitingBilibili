@@ -25,7 +25,13 @@ object AppSettings
 
     val updateStrategy : Config = config.getConfig("bilibili").getConfig("update_strategy")
     val commentTrackingCount : Int = updateStrategy.getInt("comment_keep_update_count")
+    val defaultMaxAv : Int = updateStrategy.getInt("default_max_av")
 
     val httpConfig : Config = config.getConfig("bilibili").getConfig("http")
     val StrictWaitingTime: Int = httpConfig.getInt("strict_waiting_time")
+    val MaxCommentHandler : Int = httpConfig.getInt("max_comment_handler")
+    val MaxMonitorHandler : Int = httpConfig.getInt("max_monitor_handler")
+    val MaxTraversalHandler : Int = httpConfig.getInt("max_traversal_handler")
+
+    val commentPageSize : Int = 10
 }

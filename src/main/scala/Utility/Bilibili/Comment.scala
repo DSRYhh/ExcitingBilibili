@@ -4,6 +4,7 @@ import java.io.{BufferedWriter, File, FileWriter}
 import java.util.Date
 
 import Exception.{ParseCommentException, VideoNotExistException}
+import Utility.AppSettings
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods._
@@ -162,9 +163,29 @@ object Comment
         Http().cachedHostConnectionPool[Int]("api.bilibili.cn")
 
 
-    def getCommentBefore(av: String, date: Date): Future[List[Comment]] =
-    {
-        throw new NotImplementedError() //TODO implement
+    def getCommentAfter(av : String, lv : Int) : Future[List[Comment]] = {
+        getCommentPage(av).flatMap(firstPage => {
+            firstPage.list match
+            {
+                case Some(list) =>
+                    val maxLv = list.map(_.lv).max
+                    if (maxLv <= lv)
+                    {
+                        Future(Nil)
+                    }
+                    else
+                    {
+                        val endPage =
+                            if ((maxLv - lv) / AppSettings.commentPageSize + 1 > firstPage.pages)
+                                firstPage.pages
+                            else
+                                (maxLv - lv) / AppSettings.commentPageSize + 1
+                        getCommentPages(av, 1 to endPage)
+                    }
+
+                case None => Future(Nil)
+            }
+        })
     }
 
     /**
@@ -259,67 +280,7 @@ object Comment
         })
     }
 
-    @deprecated
-    def getAllComment(avList: Range) =
-    {
-        val requests =
-            for (av <- avList)
-                yield (commentPageRequestBuilder(av.toString, 1), av)
-
-        Source(requests)
-            .via(pool)
-            .via(Flow[(Try[HttpResponse], Int)].map(firstPages =>
-            {
-                firstPages._1 match
-                {
-                    case Success(response) =>
-                        response.entity
-                            .toStrict(StrictWaitingTime)
-                            .map(_.data.utf8String)
-                            .map(parseCommentPage(_, firstPages._2.toString, 1))
-                            .map(fp => (fp, firstPages._2))
-                    case Failure(error) => throw error
-                }
-            })).mapAsync(1)(identity)
-            .via(Flow[(CommentPage, Int)].map(firstPagePair =>
-            {
-                val firstPage: CommentPage = firstPagePair._1
-                val av: Int = firstPagePair._2
-                if (firstPage.results == 0)
-                {
-                    Future
-                    {
-                        (Nil, Source.empty)
-                    }
-                }
-                else if (firstPage.pages == 1)
-                {
-                    Future
-                    {
-                        firstPage.list match
-                        {
-                            case Some(list) => (list, Source.empty)
-                            case None => (Nil, Source.empty)
-                        }
-                    }
-                }
-                else //more than one page
-                {
-                    val firstList: List[Comment] = firstPage.list match
-                    {
-                        case Some(l) => l
-                        case None => Nil
-                    }
-
-                    val requests = for (pageCount <- 2 to firstPage.pages)
-                        yield (commentPageRequestBuilder(av.toString, pageCount), pageCount)
-
-                    (firstList, Source(requests))
-                }
-            }))
-    }
-
-    def getLatestComment(page: CommentPage): Option[Comment] =
+    private def getLatestComment(page: CommentPage): Option[Comment] =
     {
         page.list match
         {
@@ -332,22 +293,22 @@ object Comment
         }
     }
 
-    def getLatestComment(av: String): Future[Option[Comment]] =
+    private def getLatestComment(av: String): Future[Option[Comment]] =
     {
         getCommentPage(av).map(getLatestComment)
     }
 
-    def getPageCount(av: String): Future[Int] =
+    private def getPageCount(av: String): Future[Int] =
     {
         getPageCountWithFirstPage(av).map(_._1)
     }
 
-    def getPageCountWithFirstPage(av: String): Future[(Int, CommentPage)] =
+    private def getPageCountWithFirstPage(av: String): Future[(Int, CommentPage)] =
     {
         getCommentPage(av).map(page => (page.pages, page))
     }
 
-    def getCommentPage(av: String, pageNum: Int = 1): Future[CommentPage] =
+    private def getCommentPage(av: String, pageNum: Int = 1): Future[CommentPage] =
     {
         avVerifier(av)
 
@@ -364,7 +325,7 @@ object Comment
             .map(parseCommentPage(_, av, pageNum))
     }
 
-    def getCommentPages(av: String, pages: Range): Future[List[Comment]] =
+    private def getCommentPages(av: String, pages: Range): Future[List[Comment]] =
     {
         avVerifier(av)
 
@@ -465,7 +426,6 @@ object Comment
     def main(args: Array[String]): Unit =
     {
 
-
         val fbidSet = new mutable.HashSet[String]()
         (10000 to 11000).toList.foreach(av =>
         {
@@ -475,7 +435,7 @@ object Comment
                 {
 //                    println(c.map(_.reply_count).sum + c.length)
 //                    println(c.map(_.lv).diff((1 to c.head.lv).reverse))
-                    Comment.flatten(c, av.toInt)
+                    Comment.flatten(c, av)
                 })
                 .onComplete
                 {

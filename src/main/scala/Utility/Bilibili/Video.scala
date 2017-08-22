@@ -111,16 +111,15 @@ object Video
     def getVideoInfo(av : String) : Future[Option[flatVideoInfo]] = {
 
         getViewInfo(av).flatMap{
-            case Right(viewRes) => {
+            case Right(viewRes) =>
                 getBasicInfo(av).map( basicinfo =>
                     Some(flatVideoInfo.build(viewRes.data, basicinfo)))
-            }
             case Left(_) =>
                 Future(None)
         }
     }
 
-    private def getBasicInfo(av : String) : Future[VideoBaiscInfo] = {
+    def getBasicInfo(av : String) : Future[VideoBaiscInfo] = {
 
         av.foreach((c) => if (!c.isDigit)
         {

@@ -1,9 +1,8 @@
-import Actors.Manager
+package ExcitingBilibili
+import ExcitingBilibili.Actors.Manager
+import ExcitingBilibili.Utility.AppSettings
 import org.slf4j.LoggerFactory
 
-/**
-  * Created by hyh on 2017/8/19.
-  */
 /**
   * The entry of the program
   */
@@ -13,7 +12,7 @@ object Main
 
     def main(args: Array[String]): Unit =
     {
-        logger.info("hahahahahahah")
-//        Manager.start()
+        AppSettings.MaxTraversalHandler
+        Manager.start()
     }
 }

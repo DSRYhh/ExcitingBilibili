@@ -1,10 +1,10 @@
-package Utility.Database
+package ExcitingBilibili.Utility.Database
 
 import java.sql.Timestamp
 import java.util.Calendar
 
-import Utility.Bilibili.{danmu, flatComment, flatVideoInfo}
-import Utility.Database.Tables.{rComments, rDanmu, rVideo}
+import ExcitingBilibili.Utility.Bilibili.{danmu, flatComment, flatVideoInfo}
+import ExcitingBilibili.Utility.Database.Tables.{rComments, rDanmu, rVideo}
 
 
 /**
@@ -12,7 +12,7 @@ import Utility.Database.Tables.{rComments, rDanmu, rVideo}
   */
 object Converter
 {
-    def torVideo(video : flatVideoInfo): Utility.Database.Tables.rVideo = {
+    def torVideo(video : flatVideoInfo): ExcitingBilibili.Utility.Database.Tables.rVideo = {
         rVideo(video.av.toInt,
             video.title,
             video.upName,
@@ -33,10 +33,10 @@ object Converter
             video.like,
             video.no_reprint,
             video.copyright,
-            new java.sql.Timestamp(Calendar.getInstance().getTime().getTime()))
+            new java.sql.Timestamp(Calendar.getInstance().getTime.getTime))
     }
 
-    def torComment(comment : flatComment): Utility.Database.Tables.rComments = {
+    def torComment(comment : flatComment): ExcitingBilibili.Utility.Database.Tables.rComments = {
         rComments(comment.av,
             comment.mid,
             comment.lv,
@@ -58,11 +58,11 @@ object Converter
             comment.next_exp,
             comment.sex,
             comment.parentFeedBackId,
-            new java.sql.Timestamp(Calendar.getInstance().getTime().getTime())
+            new java.sql.Timestamp(Calendar.getInstance().getTime.getTime)
         )
     }
 
-    def torDanmu(dm : danmu): Utility.Database.Tables.rDanmu = {
-        rDanmu(dm.cid, dm.av, dm.content, new java.sql.Timestamp(Calendar.getInstance().getTime().getTime()))
+    def torDanmu(dm : danmu): ExcitingBilibili.Utility.Database.Tables.rDanmu = {
+        rDanmu(dm.cid, dm.av, dm.content, new java.sql.Timestamp(Calendar.getInstance().getTime.getTime))
     }
 }

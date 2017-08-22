@@ -1,6 +1,6 @@
-package Actors
+package ExcitingBilibili.Actors
 
-import Utility.AppSettings
+import ExcitingBilibili.Utility.AppSettings
 import akka.actor.Actor
 
 /**
@@ -10,7 +10,7 @@ class CommentUpdater extends Actor
 {
     private val KEEP_UPDATE_COUNT : Int = AppSettings.commentTrackingCount
 
-    override def receive = {
+    override def receive: Nothing = {
         throw new NotImplementedError()
     }
 }

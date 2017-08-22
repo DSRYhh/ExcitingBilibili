@@ -1,9 +1,9 @@
-package Utility.Bilibili
+package ExcitingBilibili.Utility.Bilibili
 
 import java.text.SimpleDateFormat
 import java.util.Date
 
-import Utility.{AppSettings, Concurrent}
+import ExcitingBilibili.Utility.{AppSettings, Concurrent}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip

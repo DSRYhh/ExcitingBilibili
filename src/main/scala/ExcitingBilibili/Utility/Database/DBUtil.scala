@@ -1,6 +1,6 @@
-package Utility.Database
+package ExcitingBilibili.Utility.Database
 
-import Utility.AppSettings
+import ExcitingBilibili.Utility.AppSettings
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.PostgresProfile.api._
 import com.zaxxer.hikari.HikariDataSource

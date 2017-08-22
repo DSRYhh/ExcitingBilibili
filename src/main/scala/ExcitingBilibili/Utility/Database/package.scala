@@ -1,9 +1,9 @@
-package Utility
+package ExcitingBilibili.Utility
 
 import java.util.Calendar
 
-import Utility.Bilibili.{danmu, flatComment, flatVideoInfo}
-import Utility.Database.Tables.{rDanmu, rTraversallog, tComments, tDanmu, tTraversallog, tVideo}
+import ExcitingBilibili.Utility.Bilibili.{danmu, flatComment, flatVideoInfo}
+import ExcitingBilibili.Utility.Database.Tables.{rDanmu, rTraversallog, tComments, tDanmu, tTraversallog, tVideo}
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global

@@ -1,6 +1,6 @@
-package Utility.Database
+package ExcitingBilibili.Utility.Database
 
-import Utility.AppSettings
+import ExcitingBilibili.Utility.AppSettings
 import slick.codegen.SourceCodeGenerator
 import slick.jdbc.JdbcProfile
 
@@ -22,7 +22,7 @@ object MySlickCodeGenerator
     private val jdbcDriver = "org.postgresql.Driver"
     private val url = AppSettings.slickUrl
     private val outputFolder = "src/main/scala"
-    private val pkg = "Utility.Database"
+    private val pkg = "ExcitingBilibili.Utility.Database"
     private val user = AppSettings.slickUser
     private val password = AppSettings.slickPassword
 

@@ -1,4 +1,4 @@
-package Actors
+package ExcitingBilibili.Actors
 
 import akka.actor.Actor
 import akka.event.Logging

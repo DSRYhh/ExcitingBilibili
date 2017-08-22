@@ -1,4 +1,4 @@
-package Exception
+package ExcitingBilibili.Exception
 
 /**
   * Created by hyh on 2017/8/19.

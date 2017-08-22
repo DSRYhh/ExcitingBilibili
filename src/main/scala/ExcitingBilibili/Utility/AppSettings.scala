@@ -1,4 +1,4 @@
-package Utility
+package ExcitingBilibili.Utility
 
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -15,7 +15,7 @@ object AppSettings
     val slickConfig: Config =config.getConfig("slick.db")
     val slickUrl: String = slickConfig.getString("url")
     val slickUser: String = slickConfig.getString("user")
-    private val passwordFile = Source.fromFile("src/main/scala/Utility/Database/password")
+    private val passwordFile = Source.fromFile("src/main/scala/ExcitingBilibili/Utility/Database/password")
     val slickPassword: String = try passwordFile.mkString finally passwordFile.close()
 //    val slickPassword: String = slickConfig.getString("password")
     val slickMaximumPoolSize: Int = slickConfig.getInt("maximumPoolSize")

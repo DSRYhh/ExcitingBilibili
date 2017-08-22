@@ -1,8 +1,8 @@
-package Utility.Bilibili
+package ExcitingBilibili.Utility.Bilibili
 import java.sql.Timestamp
 import java.util.Date
 
-import Utility.Concurrent
+import ExcitingBilibili.Utility.Concurrent
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip

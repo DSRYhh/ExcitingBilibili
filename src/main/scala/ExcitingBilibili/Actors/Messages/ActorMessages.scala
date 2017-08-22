@@ -1,4 +1,4 @@
-package Actors.Messages
+package ExcitingBilibili.Actors.Messages
 
 /**
   * Created by hyh on 2017/8/19.

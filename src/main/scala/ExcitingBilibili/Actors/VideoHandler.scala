@@ -1,7 +1,7 @@
-package Actors
+package ExcitingBilibili.Actors
 
-import Actors.Messages._
-import Utility.Database
+import ExcitingBilibili.Actors.Messages._
+import ExcitingBilibili.Utility.Database
 import akka.actor.{Actor, Props}
 import org.slf4j.LoggerFactory
 
@@ -21,8 +21,10 @@ class VideoHandler extends Actor
     override def receive: Receive = {
         case HandleVideo(av) =>
             Database.containsVideo(av).map{
-                case true => updateInfo(UpdateVideo(av))
-                case false => updateInfo(InsertVideo(av))
+                case true =>
+                    updateInfo(UpdateVideo(av))
+                case false =>
+                    updateInfo(InsertVideo(av))
             }
         case HandleComplete(av) =>
             context.parent ! HandleComplete(av)

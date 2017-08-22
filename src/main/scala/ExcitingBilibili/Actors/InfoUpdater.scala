@@ -1,8 +1,8 @@
-package Actors
+package ExcitingBilibili.Actors
 
-import Actors.Messages.{HandleComplete, HandleError, InsertVideo, UpdateVideo}
-import Utility.Bilibili.{Comment, Video, danmu}
-import Utility.{Bilibili, Database}
+import ExcitingBilibili.Actors.Messages.{HandleComplete, HandleError, InsertVideo, UpdateVideo}
+import ExcitingBilibili.Utility.Bilibili.{Comment, Video, danmu}
+import ExcitingBilibili.Utility.{Bilibili, Database}
 import akka.actor.Actor
 import org.slf4j.LoggerFactory
 
@@ -37,13 +37,13 @@ class InfoUpdater extends Actor
                     context.parent ! HandleComplete(av)
             }
 
+
         case UpdateVideo(av) =>
             Database.getLatestComment(av).flatMap(maxLvOption => {
                 val maxLv = maxLvOption match {
                     case Some(ml) => ml
                     case None => -1
                 }
-
                 Video.getBasicInfo(av.toString).map(basicInfo => {
                     basicInfo.cid match {
                         case Bilibili.NullCidSymbol =>
@@ -55,17 +55,17 @@ class InfoUpdater extends Actor
                                 danmu.getDanmu(cid).map(_.foreach(entry => {
                                     Database.insertDanmu(cid.toInt, av, entry)
                                 }))
-                            }.onComplete{
-                                case Success(_) =>
-                                    context.parent ! HandleComplete(av)
-                                    logger.info(s"Update $av complete")
-                                case Failure(_) =>
-                                    context.parent ! HandleError(av)
-                                    logger.info(s"Update $av failure")
                             }
                     }
                 })
-            })
+            }).onComplete{
+                case Success(_) =>
+                    context.parent ! HandleComplete(av)
+                    logger.info(s"Update $av complete")
+                case Failure(error) =>
+                    context.parent ! HandleError(av)
+                    logger.error(s"Update $av failure with $error")
+            }
 
         case unknown @ _ =>
             logger.warn("Unknown message: " + unknown + "  in " + context.self.path.name + " from " + context.sender().path.name)

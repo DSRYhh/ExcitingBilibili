@@ -1,11 +1,12 @@
-package Actors
+package ExcitingBilibili.Actors
 
-import Actors.Messages.{HandleComplete, HandleError, HandleVideo, InitialLaunch}
-import Utility.{AppSettings, Database}
+import ExcitingBilibili.Actors.Messages.{HandleComplete, HandleError, HandleVideo, InitialLaunch}
+import ExcitingBilibili.Utility.{AppSettings, Database}
 import akka.actor.{Actor, Props}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 /**
   * Created by hyh on 2017/8/19.
@@ -17,7 +18,7 @@ class Traversal extends Actor
     private val maxHandler : Int = AppSettings.MaxTraversalHandler
     private var nextHandler: Int = 0
 
-    override def receive: Receive =
+    override def receive : Receive =
     {
         case InitialLaunch =>
             Database.latestTraversal().map
@@ -29,6 +30,7 @@ class Traversal extends Actor
             }
 
         case HandleComplete(av) =>
+            Database.logTraversal(av)
             Database.maxAvVideo().map(maxAvOption =>
             {
                 val maxAv: Int = maxAvOption match
@@ -44,7 +46,12 @@ class Traversal extends Actor
                 {
                     handleVideo(1)
                 }
-            })
+            }).onComplete{
+                case Success(_) =>
+                    logger.debug(s"$av sent")
+                case Failure(error) =>
+                    logger.error(s"$error")
+            }
         case HandleError(av) =>
             handleVideo(av)
         case unknown @ _ =>

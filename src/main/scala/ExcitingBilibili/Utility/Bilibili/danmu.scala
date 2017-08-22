@@ -1,8 +1,8 @@
-package Utility.Bilibili
+package ExcitingBilibili.Utility.Bilibili
 
 import java.util.zip.{Inflater, InflaterInputStream}
 
-import Utility.{AppSettings, Concurrent}
+import ExcitingBilibili.Utility.{AppSettings, Concurrent}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods.GET

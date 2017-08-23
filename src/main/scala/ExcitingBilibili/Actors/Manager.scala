@@ -24,10 +24,10 @@ class Manager extends Actor
             {
                 context.actorOf(Props[NewListMonitor](new NewListMonitor), "NewListMonitor")
             } ! InitialLaunch
-            //            context.child("CommentUpdater").getOrElse
-            //            {
-            //                context.actorOf(Props[CommentUpdater](new CommentUpdater), "CommentUpdater")
-            //            } ! InitialLaunch
+            context.child("CommentUpdater").getOrElse
+            {
+                context.actorOf(Props[CommentUpdater](new CommentUpdater), "CommentUpdater")
+            } ! InitialLaunch
             context.child("Traversal").getOrElse
             {
                 context.actorOf(Props[Traversal](new Traversal), "Traversal")

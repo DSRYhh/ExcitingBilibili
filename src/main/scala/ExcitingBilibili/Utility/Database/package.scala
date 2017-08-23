@@ -44,6 +44,12 @@ package object Database
 
     }
 
+    def getLatestVideos(count : Int): Future[Seq[Int]] = {
+        DBUtil.db.run{
+            tVideo.sortBy(_.av.desc).take(count).map(_.av).result
+        }
+    }
+
     def getLatestComment(av : Int): Future[Option[Int]] = {
         DBUtil.db.run{
             tComments.filter(_.av === av).map(_.lv).max.result

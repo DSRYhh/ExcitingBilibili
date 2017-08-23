@@ -2,6 +2,7 @@ package ExcitingBilibili.Utility.Bilibili
 import java.sql.Timestamp
 import java.util.Date
 
+import ExcitingBilibili.Exception.ParseWebPageException
 import ExcitingBilibili.Utility.Concurrent
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -157,10 +158,14 @@ object Video
 
                 val pageTitle = doc.title()
                 val videoTitle = doc.body().select("div.v-title").select("h1").text()
-                val videoPattern  = s"${Regex.quote(videoTitle)}_(\\S+?)_(\\S+?)_bilibili_哔哩哔哩".r
-                val matchResult = videoPattern.findAllIn(pageTitle)
-                val subZone = matchResult.group(1)
-                val zone = matchResult.group(2)
+                val videoPattern  = s"${Regex.quote(videoTitle)}(\\s+)?_(\\S+?)_(\\S+?)_bilibili_哔哩哔哩".r
+                val matchResult = videoPattern.findFirstMatchIn(pageTitle)
+                val zoneInfoResult = matchResult match {
+                    case Some(zoneInfo) => (zoneInfo.group(2), zoneInfo.group(3))
+                    case None => throw ParseWebPageException(av, videoPattern.toString, pageTitle)
+                }
+                val subZone = zoneInfoResult._1
+                val zone = zoneInfoResult._2
 
                 val createTime = doc.body().select("div.main-inner").select("div.tminfo").first().select("time").text() match {
                     case "" => NullCreateTime

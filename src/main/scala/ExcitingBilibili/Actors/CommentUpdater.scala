@@ -17,7 +17,7 @@ class CommentUpdater extends Actor
 
     private final val logger = LoggerFactory.getLogger(getClass)
     private val queryQueue = scala.collection.mutable.Queue[Int]()
-    override def receive = {
+    override def receive : Unit = {
         case InitialLaunch =>
             updateVideoList()
         case HandleComplete(av) =>
@@ -29,7 +29,7 @@ class CommentUpdater extends Actor
             {
                 updateVideo(queryQueue.dequeue())
             }
-        case HandleError(av) =>
+        case HandleError(av, error) =>
             if (queryQueue.isEmpty)
             {
                 updateVideoList()

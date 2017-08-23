@@ -1,12 +1,13 @@
 package ExcitingBilibili.Actors
 
 import ExcitingBilibili.Actors.Messages.{HandleComplete, HandleError, HandleVideo, InitialLaunch}
+import ExcitingBilibili.Exception.ParseWebPageException
 import ExcitingBilibili.Utility.{AppSettings, Database}
 import akka.actor.{Actor, Props}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
+import scala.concurrent.Future
 
 /**
   * Created by hyh on 2017/8/19.
@@ -17,6 +18,8 @@ class Traversal extends Actor
 
     private val maxHandler : Int = AppSettings.MaxTraversalHandler
     private var nextHandler: Int = 0
+
+    private var retry : (Int, Int) = (1, 0) //(avNum, retry time)
 
     override def receive : Receive =
     {
@@ -31,29 +34,35 @@ class Traversal extends Actor
 
         case HandleComplete(av) =>
             Database.logTraversal(av)
-            Database.maxAvVideo().map(maxAvOption =>
-            {
-                val maxAv: Int = maxAvOption match
-                {
-                    case Some(maxAvNo) => maxAvNo
-                    case None => AppSettings.defaultMaxAv
-                }
-                if (av + 1 <= maxAv)
-                {
-                    handleVideo(av + 1)
-                }
-                else
-                {
-                    handleVideo(1)
-                }
-            }).onComplete{
-                case Success(_) =>
-                    logger.debug(s"$av sent")
-                case Failure(error) =>
-                    logger.error(s"$error")
+            retry = (av, 0)
+            nextAv(av).map(avNum => {
+                handleVideo(avNum)
+            })
+        case HandleError(av, error) =>
+            error match {
+                case _: ParseWebPageException =>
+                    nextAv(av).map(handleVideo)
+                case _ =>
+                    if (retry._1 == av)
+                    {
+                        if (retry._2 < AppSettings.MaxRetry)
+                        {
+                            retry = (av, retry._2 + 1)
+                            handleVideo(av)
+                        }
+                        else
+                        {
+                            nextAv(av).map(handleVideo)
+                            logger.warn(s"Traversal: Retry $av more than ${AppSettings.MaxRetry} times, abort.")
+                        }
+                    }
+                    else
+                    {
+                        retry = (av, 1)
+                        handleVideo(av)
+                    }
             }
-        case HandleError(av) =>
-            handleVideo(av)
+
         case unknown @ _ =>
             logger.warn("Unknown message: " + unknown + "  in " + context.self.path.name + " from " + context.sender().path.name)
 
@@ -66,5 +75,19 @@ class Traversal extends Actor
             context.actorOf(Props[VideoHandler](new VideoHandler), s"VideoHandler$nextHandler")
         } ! HandleVideo(av)
         nextHandler = (nextHandler + 1) % maxHandler
+    }
+
+    private def nextAv(av : Int): Future[Int] = {
+        if (av != 1)
+        {
+            Future(av - 1)
+        }
+        else
+        {
+            Database.maxAvVideo().map{
+                case Some(maxAv) => maxAv
+                case None => AppSettings.defaultMaxAv
+            }
+        }
     }
 }

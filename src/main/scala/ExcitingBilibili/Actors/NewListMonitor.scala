@@ -14,48 +14,64 @@ class NewListMonitor extends Actor
 {
     private final val logger = LoggerFactory.getLogger(getClass)
 
-    private var maxAv : Int = -1
+    private val monitorQueue = scala.collection.mutable.Queue[Int]()
 
     override def receive: Receive = {
         case InitialLaunch =>
-            updateNewList().onComplete{
+            updateQueue().onComplete{
                 case Success(_) =>
                 case Failure(error) => logger.error(s"Get new list failed with $error")
             }
         case HandleComplete(av) =>
-            if (av == maxAv)
+            if (monitorQueue.isEmpty)
             {
-                updateNewList().onComplete{
+                updateQueue().onComplete{
                     case Success(_) =>
                     case Failure(error) => logger.error(s"Get new list failed with $error")
                 }
             }
-        case HandleError(av) =>
-            if (av == maxAv)
+            else
             {
-                updateNewList().onComplete{
+                requestUpdate(monitorQueue.dequeue())
+            }
+        case HandleError(av, error) =>
+            if (monitorQueue.isEmpty)
+            {
+                updateQueue().onComplete{
                     case Success(_) =>
-                    case Failure(error) => logger.error(s"Get new list failed with $error")
+                    case Failure(listGetError) => logger.error(s"Get new list failed with $listGetError")
                 }
+            }
+            else
+            {
+                requestUpdate(monitorQueue.dequeue())
             }
         case unknown @ _ =>
             logger.warn("Unknown message: " + unknown + "  in " + context.self.path.name + " from " + context.sender().path.name)
     }
 
-    private def updateNewList() = {
+    private def updateQueue() = {
         Newlist.updateNewList()
             .map(_._1)
             .map(avList =>
                 {
-                    maxAv = avList.last
-                    avList.foreach(av => {
-                        context.child(s"VideoHandler").getOrElse
-                        {
-                            context.actorOf(Props[VideoHandler](new VideoHandler), s"VideoHandler")
-                        } ! HandleVideo(av)
-                    })
+                    avList.foreach(monitorQueue.enqueue(_))
+                    if (monitorQueue.nonEmpty)
+                    {
+                        requestUpdate(monitorQueue.dequeue())
+                    }
+                    else
+                    {
+                        context.self ! InitialLaunch
+                    }
                 }
-
             )
+    }
+
+    private def requestUpdate(av : Int) = {
+        context.child(s"VideoHandler").getOrElse
+        {
+            context.actorOf(Props[VideoHandler](new VideoHandler), s"VideoHandler")
+        } ! HandleVideo(av)
     }
 }

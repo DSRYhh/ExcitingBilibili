@@ -32,6 +32,7 @@ object AppSettings
     val MaxCommentHandler : Int = httpConfig.getInt("max_comment_handler")
     val MaxMonitorHandler : Int = httpConfig.getInt("max_monitor_handler")
     val MaxTraversalHandler : Int = httpConfig.getInt("max_traversal_handler")
+    val MaxRetry : Int = httpConfig.getInt("max_retry")
 
     val commentPageSize : Int = 10
 }

@@ -1,6 +1,7 @@
 package ExcitingBilibili.Actors
 
 import ExcitingBilibili.Actors.Messages.{HandleComplete, HandleError, InsertVideo, UpdateVideo}
+import ExcitingBilibili.Exception.ParseWebPageException
 import ExcitingBilibili.Utility.Bilibili.{Comment, Video, danmu}
 import ExcitingBilibili.Utility.{Bilibili, Database}
 import akka.actor.Actor
@@ -26,15 +27,23 @@ class InfoUpdater extends Actor
                         Database.InsertComment(Comment.flatten(comments,av))
                     }).onComplete{
                         case Success(_) =>
-                            logger.info(s"Insert $av succeed.")
+                            logger.info(s"${context.self.path}: Insert $av succeed.")
                             context.parent ! HandleComplete(av)
                         case Failure(error) =>
-                            logger.error(s"Error occurred: ${error.toString}")
-                            context.parent ! HandleError(av)
+                            throw error
                     }
                 case None =>
-                    logger.info(s"Video $av does not exist. Skip.")
+                    logger.info(s"${context.self.path}: Video $av does not exist. Skip.")
                     context.parent ! HandleComplete(av)
+            }.onComplete{
+                case Success(_) =>
+                case Failure(error) =>
+                    error match {
+                        case parseFail : ParseWebPageException =>
+                            logger.error(s"${context.self.path}: Insert $av failure with $error: can't match ${parseFail.pattern} in ${parseFail.text}")
+                        case _ => logger.error(s"${context.self.path}: Insert $av failure with $error")
+                    }
+                    context.parent ! HandleError(av, error)
             }
 
 
@@ -61,10 +70,14 @@ class InfoUpdater extends Actor
             }).onComplete{
                 case Success(_) =>
                     context.parent ! HandleComplete(av)
-                    logger.info(s"Update $av complete")
+                    logger.info(s"${context.self.path}: Update $av complete")
                 case Failure(error) =>
-                    context.parent ! HandleError(av)
-                    logger.error(s"Update $av failure with $error")
+                    context.parent ! HandleError(av, error)
+                    error match {
+                        case parseFail : ParseWebPageException =>
+                            logger.error(s"${context.self.path}: Update $av failure with $error: can't match ${parseFail.pattern} in ${parseFail.text}")
+                        case _ => logger.error(s"${context.self.path}: Update $av failure with $error")
+                    }
             }
 
         case unknown @ _ =>

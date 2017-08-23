@@ -28,8 +28,8 @@ class VideoHandler extends Actor
             }
         case HandleComplete(av) =>
             context.parent ! HandleComplete(av)
-        case HandleError(av) =>
-            context.parent ! HandleError(av)
+        case HandleError(av, error) =>
+            context.parent ! HandleError(av, error)
         case unknown @ _ =>
             logger.warn("Unknown message: " + unknown + "  in " + context.self.path.name + " from " + context.sender().path.name)
     }

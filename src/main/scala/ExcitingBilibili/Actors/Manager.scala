@@ -4,7 +4,7 @@ import java.util.concurrent.{SynchronousQueue, ThreadPoolExecutor, TimeUnit}
 
 import ExcitingBilibili.Actors.Messages.InitialLaunch
 import ExcitingBilibili.Utility.Concurrent
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.ExecutionContext

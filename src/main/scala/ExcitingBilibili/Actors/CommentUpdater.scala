@@ -10,7 +10,8 @@ class CommentUpdater extends Actor
 {
     private val KEEP_UPDATE_COUNT : Int = AppSettings.commentTrackingCount
 
-    override def receive: Nothing = {
+    override def receive : Nothing = {
         throw new NotImplementedError()
+
     }
 }

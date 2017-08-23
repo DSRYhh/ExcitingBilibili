@@ -34,6 +34,7 @@ object Newlist
     private val pool =
         Http().cachedHostConnectionPool[Int]("www.bilibili.com")
 
+    @deprecated("Can not add any query parameter without logging in")
     private def getNewList(date: Date, typeid: Int, page: Int): Future[(List[Int], Int)] =
     {
         val queryParams = Map("date" -> dateToString(date),
@@ -43,6 +44,7 @@ object Newlist
         getNewList(baseUri.withQuery(Uri.Query(queryParams)))
     }
 
+    @deprecated("Can not add any query parameter without logging in")
     def getNewList(date: Date, page: Int): Future[(List[Int], Int)] =
     {
         val queryParams = Map("date" -> dateToString(date),
@@ -51,6 +53,7 @@ object Newlist
         getNewList(baseUri.withQuery(Uri.Query(queryParams)))
     }
 
+    @deprecated("Can not add any query parameter without logging in")
     def getNewList(typeid: Int, page: Int): Future[(List[Int], Int)] =
     {
         val queryParams = Map("typeid" -> typeid.toString,
@@ -59,11 +62,20 @@ object Newlist
         getNewList(baseUri.withQuery(Uri.Query(queryParams)))
     }
 
+    @deprecated("Can not add any query parameter without logging in")
     def getNewList(page: Int): Future[(List[Int], Int)] =
     {
         val queryParams = Map("page" -> page.toString)
 
         getNewList(baseUri.withQuery(Uri.Query(queryParams)))
+    }
+
+    /**
+      * Get the new video list
+      * @return
+      */
+    def updateNewList() : Future[(List[Int], Int)] = {
+        getNewList(baseUri)
     }
 
     /**
@@ -102,6 +114,7 @@ object Newlist
             })
     }
 
+    @deprecated("Can not add any query parameter without logging in")
     def getNewLists(pages: Range): Future[List[(List[Int], Int)]] =
     {
         import akka.http.scaladsl.model.headers

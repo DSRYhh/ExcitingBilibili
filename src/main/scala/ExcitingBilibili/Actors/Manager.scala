@@ -20,10 +20,10 @@ class Manager extends Actor
     override def receive: Receive =
     {
         case InitialLaunch =>
-            //            context.child("NewListMonitor").getOrElse
-            //            {
-            //                context.actorOf(Props[NewListMonitor](new NewListMonitor), "NewListMonitor")
-            //            } ! InitialLaunch
+            context.child("NewListMonitor").getOrElse
+            {
+                context.actorOf(Props[NewListMonitor](new NewListMonitor), "NewListMonitor")
+            } ! InitialLaunch
             //            context.child("CommentUpdater").getOrElse
             //            {
             //                context.actorOf(Props[CommentUpdater](new CommentUpdater), "CommentUpdater")

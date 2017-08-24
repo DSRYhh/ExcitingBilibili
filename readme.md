@@ -21,7 +21,7 @@ Use postgre to store data. The structure of the database can be seen in `/src/ma
 
 Query parameters
 
-|Parameter|Example|Remarks|
-|:-------:|:-----:|:-:|
-|date|`date=2017-8-1`|Today by default|
-|count|`count=50`|Return all data if not specified|    
+|Parameter|Example|Remarks|Optional|
+|:-------:|:-----:|:--|:--:|
+|date|`date=2017-8-1`|Today by default|Optional|
+|count|`count=50`|Return all data if not specified|Optional|    

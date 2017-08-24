@@ -32,5 +32,5 @@ object AppSettings {
   val MaxTraversalHandler: Int = httpConfig.getInt("max_traversal_handler")
   val MaxRetry: Int = httpConfig.getInt("max_retry")
   val commentPageSize: Int = 10
-
+  val DefaultQueryDataCount : Int = httpConfig.getInt("default_query_data_count")
 }

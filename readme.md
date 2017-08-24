@@ -1,6 +1,17 @@
-#Exciting Bilibili
-##Web 
+# Exciting Bilibili
+![Build status](https://travis-ci.org/DSRYhh/ExcitingBilibili.svg?branch=master)
+
+## Build
+
+Build with `sbt 0.13.16`. Use `sbt` command and enter `compile` to build the project.
+
+### Database
+Use postgre to store data. The structure of the database can be seen in `/src/main/scala/ExcitingBilibili/Utility/Database/CreateTable.sql`
+
+## Web 
+
 ### RESTful API
+
 #### System status
 `/api/status`: System status in JSON format
 

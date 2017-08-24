@@ -1,10 +1,12 @@
 package ExcitingBilibili.Utility.Bilibili
 
+import java.io.{BufferedReader, InputStreamReader}
 import java.util.zip.{Inflater, InflaterInputStream}
 
 import ExcitingBilibili.Utility.{AppSettings, Concurrent}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.coding.Deflate
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{HttpEncodingRange, HttpEncodings}
@@ -49,7 +51,7 @@ object danmu {
       .map(_.dataBytes)
       .map(_.runWith(StreamConverters.asInputStream()))
       .map(new InflaterInputStream(_, new Inflater(true)))
-      .map(Source.fromInputStream(_).mkString)
+      .map(Source.fromInputStream(_)("UTF-8").mkString)
       .map(xmlString => {
         (xml.XML.loadString(xmlString) \ "d").map(_.text).toList
       })

@@ -28,7 +28,7 @@ class InfoUpdater extends Actor {
                  Database.insertDanmu(videoInfo.cid.toInt, av, entry)
                }))
                _ <- Comment.getAllComment(av.toString).map(comments => {
-                 Database.InsertComment(Comment.flatten(comments, av))
+                 Database.insertComment(Comment.flatten(comments, av))
                })} yield true
         case None =>
           Future {
@@ -105,7 +105,7 @@ class InfoUpdater extends Actor {
       else
         Comment.getAllComment(av.toString)
     comments.flatMap(c => {
-      Database.InsertComment(Comment.flatten(c, av))
+      Database.insertComment(Comment.flatten(c, av))
     })
   }
 

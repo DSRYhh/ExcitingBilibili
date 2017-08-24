@@ -20,12 +20,7 @@ object WebServer {
     // needed for the future flatMap/onComplete in the end
     implicit val executionContext = system.dispatcher
 
-    val route =
-      path("hello") {
-        get {
-          complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "<h1>Say hello to akka-http</h1>"))
-        }
-      }
+    val route = ApiRouter.route
 
     val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
 

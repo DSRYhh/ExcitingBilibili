@@ -5,7 +5,7 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.Calendar
 
-import ExcitingBilibili.Utility.Bilibili.HttpFormat.SystemStatus
+import ExcitingBilibili.Utility.Bilibili.HttpFormat.{BasicVideoInfo, SystemStatus}
 import ExcitingBilibili.Utility.Bilibili.{danmu, flatComment, flatVideoInfo}
 import ExcitingBilibili.Utility.Database.Tables.{rDanmu, rTraversallog, tComments, tDanmu, tTraversallog, tVideo}
 import slick.jdbc.PostgresProfile.api._
@@ -20,13 +20,13 @@ import scala.language.postfixOps
 package object Database {
 
 
-  def InsertComment(comment: flatComment): Future[Int] = {
+  def insertComment(comment: flatComment): Future[Int] = {
     DBUtil.db.run {
       tComments += Converter.torComment(comment)
     }
   }
 
-  def InsertComment(comments: List[flatComment]): Future[Any] = {
+  def insertComment(comments: List[flatComment]): Future[Any] = {
     comments match {
       case Nil => Future {}
       case _ =>
@@ -115,6 +115,22 @@ package object Database {
       for (entry <- Query(insert) if !exists) yield entry
     }
     DBUtil.db.run(statement)
+  }
+
+  def latestVideo(count : Int, date : LocalDate = LocalDate.now()): Future[List[BasicVideoInfo]] = {
+    val today = Timestamp.valueOf(date.atStartOfDay())
+    val tomorrow = Timestamp.valueOf(date.plus(1, ChronoUnit.DAYS).atStartOfDay())
+
+    DBUtil.db.run{
+      tVideo.filter(entry => entry.createtime >= today && entry.createtime <= tomorrow)
+        .sortBy(_.createtime.desc)
+        .take(count)
+        .map(video => {
+          (video.av, video.title)
+        }).result
+    }.map(_.toList.map(entry => {
+      BasicVideoInfo(entry._1, entry._2)
+    }))
   }
 
   def systemStatus(): Future[SystemStatus] = {

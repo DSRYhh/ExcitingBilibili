@@ -9,7 +9,7 @@ import scala.io.Source
   */
 object AppSettings {
   private val config = ConfigFactory.load()
-  private val passwordFile = Source.fromFile("src/main/scala/ExcitingBilibili/Utility/Database/password")
+  private val passwordFile = Source.fromFile("backend/src/main/scala/ExcitingBilibili/Utility/Database/password")
 
   //Slick parameters
   val slickConfig: Config = config.getConfig("slick.db")

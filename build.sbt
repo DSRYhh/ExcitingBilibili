@@ -6,6 +6,7 @@ val scalaCVersion = "2.12.2"
 val circeVersion = "0.8.0"
 val akkaVersion = "2.5.4"
 val slickVersion = "3.2.0"
+val scalaJsDomVersion = "0.9.1"
 
 def commonSettings = Seq(
   version := projectVersion,
@@ -18,9 +19,32 @@ def commonSettings = Seq(
 
 
 
-lazy val root =  (project in file("."))
-  .aggregate(backend)
 
+
+// Scala-Js frontend
+lazy val frontend = (project in file("frontend"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(name := "frontend")
+  .settings(commonSettings: _*)
+  .settings(inConfig(Compile)(
+    Seq(
+      fullOptJS,
+      fastOptJS,
+      packageJSDependencies,
+      packageMinifiedJSDependencies
+    ).map(f => (crossTarget in f) ~= (_ / "sjsout"))
+  ))
+  .settings(skip in packageJSDependencies := false)
+  .settings(
+    persistLauncher in Compile := true,
+    persistLauncher in Test := false,
+    libraryDependencies ++= Seq(
+      "io.circe" %%% "circe-core" % circeVersion,
+      "io.circe" %%% "circe-generic" % circeVersion,
+      "io.circe" %%% "circe-parser" % circeVersion,
+      "org.scala-js" %%% "scalajs-dom" % scalaJsDomVersion
+    )
+  )
 
 val backendMainClass = "ExcitingBilibili.Main"
 
@@ -59,4 +83,30 @@ lazy val backend = (project in file("backend"))
         "io.circe" %% "circe-generic" % circeVersion,
         "io.circe" %% "circe-parser" % circeVersion
     )
+  ).settings {
+    (resourceGenerators in Compile) += Def.task {
+      val fastJsOut = (fastOptJS in Compile in frontend).value.data
+      val fastJsSourceMap = fastJsOut.getParentFile / (fastJsOut.getName + ".map")
+      Seq(
+        fastJsOut,
+        fastJsSourceMap
+      )
+    }.taskValue
+  }
+  .settings(
+  (resourceGenerators in Compile) += Def.task {
+    Seq(
+      (packageScalaJSLauncher in Compile in frontend).value.data,
+      (packageJSDependencies in Compile in frontend).value
+      //(packageMinifiedJSDependencies in Compile in frontend).value
+    )
+  }.taskValue)
+  .settings(
+    (resourceDirectories in Compile) += (crossTarget in frontend).value,
+    watchSources ++= (watchSources in frontend).value
   )
+
+
+
+lazy val root =  (project in file("."))
+  .aggregate(backend)

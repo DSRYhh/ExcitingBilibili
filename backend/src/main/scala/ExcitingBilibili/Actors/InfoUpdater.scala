@@ -21,12 +21,10 @@ class InfoUpdater extends Actor {
     case InsertVideo(av) =>
       Video.getVideoInfo(av.toString).flatMap {
         case Some(videoInfo) =>
-          for {_ <- Future {
-            Database.InsertVideo(videoInfo)
-          }
-               _ <- danmu.getDanmu(videoInfo.cid).map(_.foreach(entry => {
-                 Database.insertDanmu(videoInfo.cid.toInt, av, entry)
-               }))
+          for {_ <- Future{Database.InsertVideo(videoInfo)}
+               _ <- danmu.getDanmu(videoInfo.cid)
+                 .map(content => content.map((videoInfo.cid.toInt, av, _)))
+                 .map(Database.insertDanmu)
                _ <- Comment.getAllComment(av.toString).map(comments => {
                  Database.insertComment(Comment.flatten(comments, av))
                })} yield true
@@ -55,7 +53,8 @@ class InfoUpdater extends Actor {
             case parseFail: ParseWebPageException =>
               logger.error(s"${context.self.path}: Insert $av failure with $error: can't match ${parseFail.pattern} in ${parseFail.text}")
               context.parent ! HandleComplete(av)
-            case _ => logger.error(s"${context.self.path}: Insert $av failure with $error")
+            case _ =>
+              logger.error(s"${context.self.path}: Insert $av failure with unknown error: $error")
               context.parent ! HandleError(av, error)
           }
       }
@@ -67,7 +66,7 @@ class InfoUpdater extends Actor {
           case Some(ml) => ml
           case None => -1
         }
-        Video.getBasicInfo(av.toString).map(basicInfo => {
+        Video.getBasicInfo(av.toString).flatMap(basicInfo => {
           basicInfo.cid match {
             case Bilibili.NullCidSymbol =>
               updateComment(maxLv, av)
@@ -75,9 +74,9 @@ class InfoUpdater extends Actor {
               Future {
                 Database.updateCid(av, cid)
                 updateComment(maxLv, av)
-                danmu.getDanmu(cid).map(_.foreach(entry => {
-                  Database.insertDanmu(cid.toInt, av, entry)
-                }))
+                danmu.getDanmu(cid)
+                  .map(_.map(content => (cid.toInt, av, content)))
+                  .map(Database.insertDanmu)
               }
           }
         })

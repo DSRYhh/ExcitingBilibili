@@ -45,7 +45,7 @@ object Converter {
       comment.isgood,
       comment.msg,
       comment.device,
-      new Timestamp(comment.create),
+      new Timestamp(comment.create * 1000L),
       comment.create_at,
       comment.reply_count,
       comment.face,

@@ -13,6 +13,7 @@ import slick.jdbc.PostgresProfile.api._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.language.postfixOps
+import scala.util.{Success, Try}
 
 /**
   * Created by hyh on 2017/8/18.
@@ -20,6 +21,7 @@ import scala.language.postfixOps
 package object Database {
 
 
+  @deprecated("Insert a list is recommended")
   def insertComment(comment: flatComment): Future[Int] = {
     DBUtil.db.run {
       tComments += Converter.torComment(comment)
@@ -31,15 +33,18 @@ package object Database {
       case Nil => Future {}
       case _ =>
         DBUtil.db.run {
-          tComments ++= comments.map(Converter.torComment)
+//          tComments ++= comments.map(Converter.torComment)
+          DBIO.sequence(comments.map(c => {
+            (tComments += Converter.torComment(c)).asTry
+          }))
         }
     }
 
   }
 
   def updateCid(av: Int, cid: String): Future[Int] = {
-    val cids = for {entry <- tVideo if entry.av === av} yield entry.cid
-    val statement = cids.update(cid)
+    val cidList = for {entry <- tVideo if entry.av === av} yield entry.cid
+    val statement = cidList.update(cid)
 
     DBUtil.db.run {
       statement
@@ -96,13 +101,34 @@ package object Database {
     }
   }
 
-  @deprecated
-  def insertDanmu(danmuList: List[danmu]): Future[Option[Int]] = {
-    DBUtil.db.run {
-      tDanmu ++= danmuList.map(Converter.torDanmu)
+  /**
+    * Insert a list of danmu
+    * @param list a 3-tuple: (cid, av, content)
+    */
+  def insertDanmu(list : List[(Int, Int, String)]): Future[List[Int]] = {
+    val statements = list.map(danmu => {
+      val cid = danmu._1
+      val av = danmu._2
+      val content = danmu._3
+
+      val danmuQuery = TableQuery[tDanmu]
+      danmuQuery.forceInsertQuery {
+        val exists = (for (entry <- danmuQuery if entry.av === av.bind && entry.danmu === content.bind) yield entry).exists
+        val inserttime = new java.sql.Timestamp(Calendar.getInstance().getTime.getTime)
+        val insert = (cid.bind,
+          av.bind,
+          content.bind,
+          inserttime.bind) <> (rDanmu.apply _ tupled, rDanmu.unapply)
+        for (entry <- Query(insert) if !exists) yield entry
+      }
+    })
+
+    DBUtil.db.run{
+      DBIO.sequence(statements)
     }
   }
 
+  @deprecated("Extremely low performance. Insert the list together")
   def insertDanmu(cid: Int, av: Int, danmu: String): Future[Int] = {
     val danmuQuery = TableQuery[tDanmu]
     val statement = danmuQuery.forceInsertQuery {

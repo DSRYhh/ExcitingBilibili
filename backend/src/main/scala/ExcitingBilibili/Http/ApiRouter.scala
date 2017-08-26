@@ -26,9 +26,11 @@ object ApiRouter {
         pathPrefix("api") {
           path("status") {
               get {
+                println(System.currentTimeMillis())
                 onComplete(Database.systemStatus().map(_.toString))
                 {
                   case Success(json) =>
+                    println(System.currentTimeMillis())
                     complete(HttpEntity(ContentTypes.`application/json`, json))
                   case Failure(error) =>
                     complete(HttpResponse(StatusCodes.InternalServerError, entity = s"$error"))

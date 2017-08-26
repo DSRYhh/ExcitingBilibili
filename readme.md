@@ -25,3 +25,7 @@ Query parameters
 |:-------:|:-----:|:--|:--:|
 |date|`date=2017-8-1`|Today by default|Optional|
 |count|`count=50`|Return all data if not specified|Optional|    
+
+# TODO List
+- Duplicated primary key exception handling
+- Change danmu table to unique index

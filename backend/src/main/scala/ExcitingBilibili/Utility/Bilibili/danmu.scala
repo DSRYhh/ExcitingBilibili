@@ -1,12 +1,14 @@
 package ExcitingBilibili.Utility.Bilibili
 
-import java.io.{BufferedReader, InputStreamReader}
+import java.sql.Timestamp
+import java.util.Calendar
 import java.util.zip.{Inflater, InflaterInputStream}
 
-import ExcitingBilibili.Utility.{AppSettings, Concurrent}
+import ExcitingBilibili.Exception.ParseDanmuException
+import ExcitingBilibili.Utility.Database.Tables
+import ExcitingBilibili.Utility.{AppSettings, Concurrent, Database}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.coding.Deflate
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{HttpEncodingRange, HttpEncodings}
@@ -18,6 +20,9 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.io.Source
 import scala.language.postfixOps
+import ExcitingBilibili.Utility.Database.Tables.rDanmu
+
+import scala.collection.immutable
 
 
 /**
@@ -32,7 +37,8 @@ object danmu {
   private implicit val system: ActorSystem = Concurrent.system
   private implicit val materializer: ActorMaterializer = Concurrent.materializer
 
-  def getDanmu(cid: String): Future[List[String]] = {
+  @throws(classOf[ParseDanmuException])
+  def getDanmu(cid: String, av : Int): Future[List[Database.Tables.rDanmu]] = {
     if (cid.equals(NullCidSymbol)) return Future(Nil)
 
     val requestUri = Uri(baseUri.toString() + s"/$cid.xml")
@@ -53,7 +59,31 @@ object danmu {
       .map(new InflaterInputStream(_, new Inflater(true)))
       .map(Source.fromInputStream(_)("UTF-8").mkString)
       .map(xmlString => {
-        (xml.XML.loadString(xmlString) \ "d").map(_.text).toList
-      })
+        (xml.XML.loadString(xmlString) \ "d").map(entry => {
+          try {
+            val properties = entry.attributes.asAttrMap("p").split(',')
+            if (properties.length != 8) throw ParseDanmuException(av.toString, cid.toInt)
+            rDanmu(cid = cid.toInt,
+              av = av,
+              danmu = entry.text,
+              sendingtimeinvideo = properties(0).toDouble,
+              danmutype = properties(1).toInt,
+              fontsize = properties(2).toInt,
+              fontcolor = properties(3).toLong,
+              sendingtime = new Timestamp(properties(4).toLong * 1000L),
+              poolsize = properties(5).toInt,
+              senderid = properties(6),
+              danmuid = properties(7).toLong,
+              inserttime = new java.sql.Timestamp(Calendar.getInstance().getTime.getTime)
+            )
+          }
+          catch {
+            case _ : NoSuchElementException => throw ParseDanmuException(av.toString, cid.toInt)
+            case error : Throwable => throw error
+          }
+
+
+        })
+      }).map(_.toList)
   }
 }

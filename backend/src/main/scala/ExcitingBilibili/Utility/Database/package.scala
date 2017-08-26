@@ -7,10 +7,10 @@ import java.util.Calendar
 
 import ExcitingBilibili.Utility.Bilibili.HttpFormat.{BasicVideoInfo, SystemStatus}
 import ExcitingBilibili.Utility.Bilibili.{flatComment, flatVideoInfo}
-import ExcitingBilibili.Utility.Database.Tables.{rDanmu, rTraversallog, tComments, tDanmu, tTraversallog, tVideo}
-import slick.jdbc.PostgresProfile.api._
 import ExcitingBilibili.Utility.Concurrent.executor
+import ExcitingBilibili.Utility.Database.Tables.{rDanmu, rTraversallog, tComments, tDanmu, tTraversallog, tVideo}
 import org.slf4j.LoggerFactory
+import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.Future
 import scala.language.postfixOps
@@ -32,16 +32,11 @@ package object Database {
 
   def insertComment(comments: List[flatComment]) = {
     val startTime = System.currentTimeMillis()
-    comments match {
-      case Nil => Future {}
-      case _ =>
-        DBUtil.db.run {
-//          tComments ++= comments.map(Converter.torComment)
-          DBIO.sequence(comments.map(c => {
-            (tComments += Converter.torComment(c)).asTry
-          }))
-        }.map(_ => logger.debug(s"Insert ${comments.length} comments in ${System.currentTimeMillis() - startTime} ms."))
-    }
+    DBUtil.db.run {
+      DBIO.sequence(comments.map(c => {
+        (tComments += Converter.torComment(c)).asTry
+      }))
+    }.map(_ => logger.debug(s"Insert ${comments.length} comments in ${System.currentTimeMillis() - startTime} ms."))
 
   }
 
@@ -105,59 +100,57 @@ package object Database {
     }
   }
 
-  /**
-    * Insert a list of danmu
-    * @param list a 3-tuple: (cid, av, content)
-    */
-  def insertDanmu(list : List[(Int, Int, String)]) = {
+  def insertDanmu(list: List[rDanmu]) = {
     val startTime = System.currentTimeMillis()
 
-    DBUtil.db.run{
-      tDanmu.++=(list.map(d => rDanmu(d._1, d._2, d._3, new java.sql.Timestamp(Calendar.getInstance().getTime.getTime))))
-    }
+    DBUtil.db.run {
+      DBIO.sequence(
+        list.map(d => (tDanmu += d).asTry)
+      )
+    }.map(_ => logger.debug(s"Insert ${list.length} danmu in ${System.currentTimeMillis() - startTime} ms."))
 
-//    val statements = list.map(danmu => {
-//      val cid = danmu._1
-//      val av = danmu._2
-//      val content = danmu._3
-//
-//      val danmuQuery = TableQuery[tDanmu]
-//      danmuQuery.forceInsertQuery {
-//        val exists = (for (entry <- danmuQuery if entry.av === av.bind && entry.danmu === content.bind) yield entry).exists
-//        val inserttime = new java.sql.Timestamp(Calendar.getInstance().getTime.getTime)
-//        val insert = (cid.bind,
-//          av.bind,
-//          content.bind,
-//          inserttime.bind) <> (rDanmu.apply _ tupled, rDanmu.unapply)
-//        for (entry <- Query(insert) if !exists) yield entry
-//      }
-//    })
-//
-//    DBUtil.db.run{
-//      DBIO.sequence(statements)
-//    }.map(_ => logger.debug(s"Insert ${list.length} danmu in ${System.currentTimeMillis() - startTime} ms."))
+    //    val statements = list.map(danmu => {
+    //      val cid = danmu._1
+    //      val av = danmu._2
+    //      val content = danmu._3
+    //
+    //      val danmuQuery = TableQuery[tDanmu]
+    //      danmuQuery.forceInsertQuery {
+    //        val exists = (for (entry <- danmuQuery if entry.av === av.bind && entry.danmu === content.bind) yield entry).exists
+    //        val inserttime = new java.sql.Timestamp(Calendar.getInstance().getTime.getTime)
+    //        val insert = (cid.bind,
+    //          av.bind,
+    //          content.bind,
+    //          inserttime.bind) <> (rDanmu.apply _ tupled, rDanmu.unapply)
+    //        for (entry <- Query(insert) if !exists) yield entry
+    //      }
+    //    })
+    //
+    //    DBUtil.db.run{
+    //      DBIO.sequence(statements)
+    //    }.map(_ => logger.debug(s"Insert ${list.length} danmu in ${System.currentTimeMillis() - startTime} ms."))
   }
 
-  @deprecated("Extremely low performance. Insert the list together")
-  def insertDanmu(cid: Int, av: Int, danmu: String): Future[Int] = {
-    val danmuQuery = TableQuery[tDanmu]
-    val statement = danmuQuery.forceInsertQuery {
-      val exists = (for (entry <- danmuQuery if entry.av === av.bind && entry.danmu === danmu.bind) yield entry).exists
-      val inserttime = new java.sql.Timestamp(Calendar.getInstance().getTime.getTime)
-      val insert = (cid.bind,
-        av.bind,
-        danmu.bind,
-        inserttime.bind) <> (rDanmu.apply _ tupled, rDanmu.unapply)
-      for (entry <- Query(insert) if !exists) yield entry
-    }
-    DBUtil.db.run(statement)
-  }
+  //  @deprecated("Extremely low performance. Insert the list together")
+  //  def insertDanmu(cid: Int, av: Int, danmu: String): Future[Int] = {
+  //    val danmuQuery = TableQuery[tDanmu]
+  //    val statement = danmuQuery.forceInsertQuery {
+  //      val exists = (for (entry <- danmuQuery if entry.av === av.bind && entry.danmu === danmu.bind) yield entry).exists
+  //      val inserttime = new java.sql.Timestamp(Calendar.getInstance().getTime.getTime)
+  //      val insert = (cid.bind,
+  //        av.bind,
+  //        danmu.bind,
+  //        inserttime.bind) <> (rDanmu.apply _ tupled, rDanmu.unapply)
+  //      for (entry <- Query(insert) if !exists) yield entry
+  //    }
+  //    DBUtil.db.run(statement)
+  //  }
 
-  def latestVideo(count : Int, date : LocalDate = LocalDate.now()): Future[List[BasicVideoInfo]] = {
+  def latestVideo(count: Int, date: LocalDate = LocalDate.now()): Future[List[BasicVideoInfo]] = {
     val today = Timestamp.valueOf(date.atStartOfDay())
     val tomorrow = Timestamp.valueOf(date.plus(1, ChronoUnit.DAYS).atStartOfDay())
 
-    DBUtil.db.run{
+    DBUtil.db.run {
       tVideo.filter(entry => entry.createtime >= today && entry.createtime <= tomorrow)
         .sortBy(_.createtime.desc)
         .take(count)

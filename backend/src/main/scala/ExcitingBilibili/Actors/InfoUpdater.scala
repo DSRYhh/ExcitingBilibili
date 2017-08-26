@@ -3,11 +3,11 @@ package ExcitingBilibili.Actors
 import ExcitingBilibili.Actors.Messages.{HandleComplete, HandleError, InsertVideo, UpdateVideo}
 import ExcitingBilibili.Exception.{CommentForbiddenException, ParseWebPageException, VideoNotExistException}
 import ExcitingBilibili.Utility.Bilibili.{Comment, Video, danmu}
+import ExcitingBilibili.Utility.Concurrent.executor
 import ExcitingBilibili.Utility.{Bilibili, Database}
 import akka.actor.Actor
 import org.slf4j.LoggerFactory
 
-import ExcitingBilibili.Utility.Concurrent.executor
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -22,11 +22,10 @@ class InfoUpdater extends Actor {
       Video.getVideoInfo(av.toString).flatMap {
         case Some(videoInfo) =>
           logger.debug(s"$av: Get video info succeed.")
-          val inserting : Future[Boolean] = {
+          val inserting: Future[Boolean] = {
             val insertVideo = Database.InsertVideo(videoInfo)
               .map(_ => logger.debug(s"$av: Insert video info succeed."))
-            val getDanmuAndInsert = danmu.getDanmu(videoInfo.cid)
-              .map(content => content.map((videoInfo.cid.toInt, av, _)))
+            val getDanmuAndInsert = danmu.getDanmu(videoInfo.cid, av)
               .map(Database.insertDanmu)
               .map(_ => logger.debug(s"$av: Insert danmu info succeed."))
             val getCommentsAndInsert = Comment.getAllComment(av.toString).map(comments => {
@@ -40,13 +39,13 @@ class InfoUpdater extends Actor {
             } yield true
           }
           inserting
-//          for {_ <- Database.InsertVideo(videoInfo)
-//               _ <- danmu.getDanmu(videoInfo.cid)
-//                 .map(content => content.map((videoInfo.cid.toInt, av, _)))
-//                 .map(Database.insertDanmu)
-//               _ <- Comment.getAllComment(av.toString).map(comments => {
-//                 Database.insertComment(Comment.flatten(comments, av))
-//               })} yield true
+        //          for {_ <- Database.InsertVideo(videoInfo)
+        //               _ <- danmu.getDanmu(videoInfo.cid)
+        //                 .map(content => content.map((videoInfo.cid.toInt, av, _)))
+        //                 .map(Database.insertDanmu)
+        //               _ <- Comment.getAllComment(av.toString).map(comments => {
+        //                 Database.insertComment(Comment.flatten(comments, av))
+        //               })} yield true
 
         case None =>
           Future {
@@ -94,8 +93,7 @@ class InfoUpdater extends Actor {
               Future {
                 Database.updateCid(av, cid)
                 updateComment(maxLv, av)
-                danmu.getDanmu(cid)
-                  .map(_.map(content => (cid.toInt, av, content)))
+                danmu.getDanmu(cid, av)
                   .map(Database.insertDanmu)
               }
           }

@@ -61,7 +61,4 @@ object Converter {
     )
   }
 
-  def torDanmu(dm: danmu): ExcitingBilibili.Utility.Database.Tables.rDanmu = {
-    rDanmu(dm.cid, dm.av, dm.content, new java.sql.Timestamp(Calendar.getInstance().getTime.getTime))
-  }
 }

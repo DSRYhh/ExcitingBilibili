@@ -6,19 +6,21 @@ import java.time.temporal.ChronoUnit
 import java.util.Calendar
 
 import ExcitingBilibili.Utility.Bilibili.HttpFormat.{BasicVideoInfo, SystemStatus}
-import ExcitingBilibili.Utility.Bilibili.{danmu, flatComment, flatVideoInfo}
+import ExcitingBilibili.Utility.Bilibili.{flatComment, flatVideoInfo}
 import ExcitingBilibili.Utility.Database.Tables.{rDanmu, rTraversallog, tComments, tDanmu, tTraversallog, tVideo}
 import slick.jdbc.PostgresProfile.api._
+import ExcitingBilibili.Utility.Concurrent.executor
+import org.slf4j.LoggerFactory
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.language.postfixOps
-import scala.util.{Success, Try}
 
 /**
   * Created by hyh on 2017/8/18.
   */
 package object Database {
+
+  private final val logger = LoggerFactory.getLogger(getClass)
 
 
   @deprecated("Insert a list is recommended")
@@ -28,7 +30,8 @@ package object Database {
     }
   }
 
-  def insertComment(comments: List[flatComment]): Future[Any] = {
+  def insertComment(comments: List[flatComment]) = {
+    val startTime = System.currentTimeMillis()
     comments match {
       case Nil => Future {}
       case _ =>
@@ -37,7 +40,7 @@ package object Database {
           DBIO.sequence(comments.map(c => {
             (tComments += Converter.torComment(c)).asTry
           }))
-        }
+        }.map(_ => logger.debug(s"Insert ${comments.length} comments in ${System.currentTimeMillis() - startTime} ms."))
     }
 
   }
@@ -64,10 +67,11 @@ package object Database {
     }
   }
 
-  def InsertVideo(video: flatVideoInfo): Future[Int] = {
+  def InsertVideo(video: flatVideoInfo) = {
+    val startTime = System.currentTimeMillis()
     DBUtil.db.run {
       tVideo += Converter.torVideo(video)
-    }
+    }.map(_ => logger.debug(s"Insert 1 video in ${System.currentTimeMillis() - startTime} ms."))
   }
 
   def maxAvVideo(): Future[Option[Int]] = {
@@ -105,27 +109,33 @@ package object Database {
     * Insert a list of danmu
     * @param list a 3-tuple: (cid, av, content)
     */
-  def insertDanmu(list : List[(Int, Int, String)]): Future[List[Int]] = {
-    val statements = list.map(danmu => {
-      val cid = danmu._1
-      val av = danmu._2
-      val content = danmu._3
-
-      val danmuQuery = TableQuery[tDanmu]
-      danmuQuery.forceInsertQuery {
-        val exists = (for (entry <- danmuQuery if entry.av === av.bind && entry.danmu === content.bind) yield entry).exists
-        val inserttime = new java.sql.Timestamp(Calendar.getInstance().getTime.getTime)
-        val insert = (cid.bind,
-          av.bind,
-          content.bind,
-          inserttime.bind) <> (rDanmu.apply _ tupled, rDanmu.unapply)
-        for (entry <- Query(insert) if !exists) yield entry
-      }
-    })
+  def insertDanmu(list : List[(Int, Int, String)]) = {
+    val startTime = System.currentTimeMillis()
 
     DBUtil.db.run{
-      DBIO.sequence(statements)
+      tDanmu.++=(list.map(d => rDanmu(d._1, d._2, d._3, new java.sql.Timestamp(Calendar.getInstance().getTime.getTime))))
     }
+
+//    val statements = list.map(danmu => {
+//      val cid = danmu._1
+//      val av = danmu._2
+//      val content = danmu._3
+//
+//      val danmuQuery = TableQuery[tDanmu]
+//      danmuQuery.forceInsertQuery {
+//        val exists = (for (entry <- danmuQuery if entry.av === av.bind && entry.danmu === content.bind) yield entry).exists
+//        val inserttime = new java.sql.Timestamp(Calendar.getInstance().getTime.getTime)
+//        val insert = (cid.bind,
+//          av.bind,
+//          content.bind,
+//          inserttime.bind) <> (rDanmu.apply _ tupled, rDanmu.unapply)
+//        for (entry <- Query(insert) if !exists) yield entry
+//      }
+//    })
+//
+//    DBUtil.db.run{
+//      DBIO.sequence(statements)
+//    }.map(_ => logger.debug(s"Insert ${list.length} danmu in ${System.currentTimeMillis() - startTime} ms."))
   }
 
   @deprecated("Extremely low performance. Insert the list together")

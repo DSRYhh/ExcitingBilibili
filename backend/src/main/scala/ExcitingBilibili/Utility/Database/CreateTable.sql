@@ -52,7 +52,16 @@ CREATE TABLE IF NOT EXISTS Danmu (
   cid        INT       NOT NULL,
   av         INT       NOT NULL,
   danmu      TEXT      NOT NULL,
-  insertTime TIMESTAMP NOT NULL
+  sendingTimeInVideo DOUBLE PRECISION	 NOT NULL,
+  danmuType INT NOT NULL ,
+  fontSize INT NOT NULL ,
+  fontColor BIGINT NOT NULL ,
+  sendingTime TIMESTAMP NOT NULL ,
+  poolSize INT NOT NULL ,
+  senderId VARCHAR(255) NOT NULL ,
+  danmuId BIGINT NOT NULL ,
+  insertTime TIMESTAMP NOT NULL,
+  PRIMARY KEY (danmuId)
 );
 
 CREATE TABLE IF NOT EXISTS TraversalLog (

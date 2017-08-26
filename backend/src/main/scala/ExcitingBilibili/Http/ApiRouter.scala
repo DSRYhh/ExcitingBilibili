@@ -10,8 +10,7 @@ import akka.http.scaladsl.server.Route
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
-import scala.concurrent.ExecutionContext.Implicits.global
-
+import ExcitingBilibili.Utility.Concurrent.executor
 
 /**
   * Created by hyh on 2017/8/24.

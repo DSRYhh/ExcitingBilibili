@@ -19,33 +19,33 @@ trait Tables {
   def ddl = schema
 
   /** Entity class storing rows of table tComments
-    *  @param av Database column av SqlType(int4)
-    *  @param mid Database column mid SqlType(int4)
-    *  @param lv Database column lv SqlType(int4)
-    *  @param fbid Database column fbid SqlType(varchar), PrimaryKey, Length(255,true)
-    *  @param adCheck Database column ad_check SqlType(int4)
-    *  @param good Database column good SqlType(int4)
-    *  @param isgood Database column isgood SqlType(int4)
-    *  @param msg Database column msg SqlType(text)
-    *  @param device Database column device SqlType(varchar), Length(255,true)
-    *  @param createunixtime Database column createunixtime SqlType(timestamp)
-    *  @param createAt Database column create_at SqlType(varchar), Length(255,true)
-    *  @param replyCount Database column reply_count SqlType(int4)
-    *  @param face Database column face SqlType(text)
-    *  @param rank Database column rank SqlType(int4)
-    *  @param nick Database column nick SqlType(varchar), Length(255,true)
-    *  @param currentExp Database column current_exp SqlType(int4)
-    *  @param currentLevel Database column current_level SqlType(int4)
-    *  @param currentMin Database column current_min SqlType(int4)
-    *  @param nextExp Database column next_exp SqlType(int4)
-    *  @param sex Database column sex SqlType(varchar), Length(255,true)
-    *  @param parentfeedbackid Database column parentfeedbackid SqlType(varchar), Length(255,true)
-    *  @param inserttime Database column inserttime SqlType(timestamp) */
+   *  @param av Database column av SqlType(int4)
+   *  @param mid Database column mid SqlType(int4)
+   *  @param lv Database column lv SqlType(int4)
+   *  @param fbid Database column fbid SqlType(varchar), PrimaryKey, Length(255,true)
+   *  @param adCheck Database column ad_check SqlType(int4)
+   *  @param good Database column good SqlType(int4)
+   *  @param isgood Database column isgood SqlType(int4)
+   *  @param msg Database column msg SqlType(text)
+   *  @param device Database column device SqlType(varchar), Length(255,true)
+   *  @param createunixtime Database column createunixtime SqlType(timestamp)
+   *  @param createAt Database column create_at SqlType(varchar), Length(255,true)
+   *  @param replyCount Database column reply_count SqlType(int4)
+   *  @param face Database column face SqlType(text)
+   *  @param rank Database column rank SqlType(int4)
+   *  @param nick Database column nick SqlType(varchar), Length(255,true)
+   *  @param currentExp Database column current_exp SqlType(int4)
+   *  @param currentLevel Database column current_level SqlType(int4)
+   *  @param currentMin Database column current_min SqlType(int4)
+   *  @param nextExp Database column next_exp SqlType(int4)
+   *  @param sex Database column sex SqlType(varchar), Length(255,true)
+   *  @param parentfeedbackid Database column parentfeedbackid SqlType(varchar), Length(255,true)
+   *  @param inserttime Database column inserttime SqlType(timestamp) */
   final case class rComments(av: Int, mid: Int, lv: Int, fbid: String, adCheck: Int, good: Int, isgood: Int, msg: String, device: String, createunixtime: java.sql.Timestamp, createAt: String, replyCount: Int, face: String, rank: Int, nick: String, currentExp: Int, currentLevel: Int, currentMin: Int, nextExp: Int, sex: String, parentfeedbackid: String, inserttime: java.sql.Timestamp)
   /** GetResult implicit for fetching rComments objects using plain SQL queries */
   implicit def GetResultrComments(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp]): GR[rComments] = GR{
     prs => import prs._
-      rComments.tupled((<<[Int], <<[Int], <<[Int], <<[String], <<[Int], <<[Int], <<[Int], <<[String], <<[String], <<[java.sql.Timestamp], <<[String], <<[Int], <<[String], <<[Int], <<[String], <<[Int], <<[Int], <<[Int], <<[Int], <<[String], <<[String], <<[java.sql.Timestamp]))
+    rComments.tupled((<<[Int], <<[Int], <<[Int], <<[String], <<[Int], <<[Int], <<[Int], <<[String], <<[String], <<[java.sql.Timestamp], <<[String], <<[Int], <<[String], <<[Int], <<[String], <<[Int], <<[Int], <<[Int], <<[Int], <<[String], <<[String], <<[java.sql.Timestamp]))
   }
   /** Table description of table comments. Objects of this class serve as prototypes for rows in queries. */
   class tComments(_tableTag: Tag) extends profile.api.Table[rComments](_tableTag, "comments") {
@@ -102,21 +102,29 @@ trait Tables {
   lazy val tComments = new TableQuery(tag => new tComments(tag))
 
   /** Entity class storing rows of table tDanmu
-    *  @param cid Database column cid SqlType(int4)
-    *  @param av Database column av SqlType(int4)
-    *  @param danmu Database column danmu SqlType(text)
-    *  @param inserttime Database column inserttime SqlType(timestamp) */
-  final case class rDanmu(cid: Int, av: Int, danmu: String, inserttime: java.sql.Timestamp)
+   *  @param cid Database column cid SqlType(int4)
+   *  @param av Database column av SqlType(int4)
+   *  @param danmu Database column danmu SqlType(text)
+   *  @param sendingtimeinvideo Database column sendingtimeinvideo SqlType(float8)
+   *  @param danmutype Database column danmutype SqlType(int4)
+   *  @param fontsize Database column fontsize SqlType(int4)
+   *  @param fontcolor Database column fontcolor SqlType(int8)
+   *  @param sendingtime Database column sendingtime SqlType(timestamp)
+   *  @param poolsize Database column poolsize SqlType(int4)
+   *  @param senderid Database column senderid SqlType(varchar), Length(255,true)
+   *  @param danmuid Database column danmuid SqlType(int8), PrimaryKey
+   *  @param inserttime Database column inserttime SqlType(timestamp) */
+  final case class rDanmu(cid: Int, av: Int, danmu: String, sendingtimeinvideo: Double, danmutype: Int, fontsize: Int, fontcolor: Long, sendingtime: java.sql.Timestamp, poolsize: Int, senderid: String, danmuid: Long, inserttime: java.sql.Timestamp)
   /** GetResult implicit for fetching rDanmu objects using plain SQL queries */
-  implicit def GetResultrDanmu(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp]): GR[rDanmu] = GR{
+  implicit def GetResultrDanmu(implicit e0: GR[Int], e1: GR[String], e2: GR[Double], e3: GR[Long], e4: GR[java.sql.Timestamp]): GR[rDanmu] = GR{
     prs => import prs._
-      rDanmu.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp]))
+    rDanmu.tupled((<<[Int], <<[Int], <<[String], <<[Double], <<[Int], <<[Int], <<[Long], <<[java.sql.Timestamp], <<[Int], <<[String], <<[Long], <<[java.sql.Timestamp]))
   }
   /** Table description of table danmu. Objects of this class serve as prototypes for rows in queries. */
   class tDanmu(_tableTag: Tag) extends profile.api.Table[rDanmu](_tableTag, "danmu") {
-    def * = (cid, av, danmu, inserttime) <> (rDanmu.tupled, rDanmu.unapply)
+    def * = (cid, av, danmu, sendingtimeinvideo, danmutype, fontsize, fontcolor, sendingtime, poolsize, senderid, danmuid, inserttime) <> (rDanmu.tupled, rDanmu.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(cid), Rep.Some(av), Rep.Some(danmu), Rep.Some(inserttime)).shaped.<>({r=>import r._; _1.map(_=> rDanmu.tupled((_1.get, _2.get, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(cid), Rep.Some(av), Rep.Some(danmu), Rep.Some(sendingtimeinvideo), Rep.Some(danmutype), Rep.Some(fontsize), Rep.Some(fontcolor), Rep.Some(sendingtime), Rep.Some(poolsize), Rep.Some(senderid), Rep.Some(danmuid), Rep.Some(inserttime)).shaped.<>({r=>import r._; _1.map(_=> rDanmu.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get, _12.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column cid SqlType(int4) */
     val cid: Rep[Int] = column[Int]("cid")
@@ -124,6 +132,22 @@ trait Tables {
     val av: Rep[Int] = column[Int]("av")
     /** Database column danmu SqlType(text) */
     val danmu: Rep[String] = column[String]("danmu")
+    /** Database column sendingtimeinvideo SqlType(float8) */
+    val sendingtimeinvideo: Rep[Double] = column[Double]("sendingtimeinvideo")
+    /** Database column danmutype SqlType(int4) */
+    val danmutype: Rep[Int] = column[Int]("danmutype")
+    /** Database column fontsize SqlType(int4) */
+    val fontsize: Rep[Int] = column[Int]("fontsize")
+    /** Database column fontcolor SqlType(int8) */
+    val fontcolor: Rep[Long] = column[Long]("fontcolor")
+    /** Database column sendingtime SqlType(timestamp) */
+    val sendingtime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("sendingtime")
+    /** Database column poolsize SqlType(int4) */
+    val poolsize: Rep[Int] = column[Int]("poolsize")
+    /** Database column senderid SqlType(varchar), Length(255,true) */
+    val senderid: Rep[String] = column[String]("senderid", O.Length(255,varying=true))
+    /** Database column danmuid SqlType(int8), PrimaryKey */
+    val danmuid: Rep[Long] = column[Long]("danmuid", O.PrimaryKey)
     /** Database column inserttime SqlType(timestamp) */
     val inserttime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("inserttime")
   }
@@ -131,14 +155,14 @@ trait Tables {
   lazy val tDanmu = new TableQuery(tag => new tDanmu(tag))
 
   /** Entity class storing rows of table tTraversallog
-    *  @param index Database column index SqlType(serial), AutoInc, PrimaryKey
-    *  @param av Database column av SqlType(int4)
-    *  @param operatetime Database column operatetime SqlType(timestamp) */
+   *  @param index Database column index SqlType(serial), AutoInc, PrimaryKey
+   *  @param av Database column av SqlType(int4)
+   *  @param operatetime Database column operatetime SqlType(timestamp) */
   final case class rTraversallog(index: Int, av: Int, operatetime: java.sql.Timestamp)
   /** GetResult implicit for fetching rTraversallog objects using plain SQL queries */
   implicit def GetResultrTraversallog(implicit e0: GR[Int], e1: GR[java.sql.Timestamp]): GR[rTraversallog] = GR{
     prs => import prs._
-      rTraversallog.tupled((<<[Int], <<[Int], <<[java.sql.Timestamp]))
+    rTraversallog.tupled((<<[Int], <<[Int], <<[java.sql.Timestamp]))
   }
   /** Table description of table traversallog. Objects of this class serve as prototypes for rows in queries. */
   class tTraversallog(_tableTag: Tag) extends profile.api.Table[rTraversallog](_tableTag, "traversallog") {
@@ -157,32 +181,32 @@ trait Tables {
   lazy val tTraversallog = new TableQuery(tag => new tTraversallog(tag))
 
   /** Entity class storing rows of table tVideo
-    *  @param av Database column av SqlType(int4), PrimaryKey
-    *  @param title Database column title SqlType(text)
-    *  @param upname Database column upname SqlType(varchar), Length(1024,true)
-    *  @param upmid Database column upmid SqlType(int4)
-    *  @param createtime Database column createtime SqlType(timestamp)
-    *  @param zone Database column zone SqlType(varchar), Length(255,true)
-    *  @param subzone Database column subzone SqlType(varchar), Length(255,true)
-    *  @param cid Database column cid SqlType(varchar), Length(255,true)
-    *  @param aid Database column aid SqlType(int4)
-    *  @param viewcount Database column viewcount SqlType(int4)
-    *  @param danmaku Database column danmaku SqlType(int4)
-    *  @param reply Database column reply SqlType(int4)
-    *  @param favorite Database column favorite SqlType(int4)
-    *  @param coin Database column coin SqlType(int4)
-    *  @param sharecount Database column sharecount SqlType(int4)
-    *  @param nowRank Database column now_rank SqlType(int4)
-    *  @param hisRank Database column his_rank SqlType(int4)
-    *  @param likecount Database column likecount SqlType(int4)
-    *  @param noReprint Database column no_reprint SqlType(int4)
-    *  @param copyright Database column copyright SqlType(int4)
-    *  @param inserttime Database column inserttime SqlType(timestamp) */
+   *  @param av Database column av SqlType(int4), PrimaryKey
+   *  @param title Database column title SqlType(text)
+   *  @param upname Database column upname SqlType(varchar), Length(1024,true)
+   *  @param upmid Database column upmid SqlType(int4)
+   *  @param createtime Database column createtime SqlType(timestamp)
+   *  @param zone Database column zone SqlType(varchar), Length(255,true)
+   *  @param subzone Database column subzone SqlType(varchar), Length(255,true)
+   *  @param cid Database column cid SqlType(varchar), Length(255,true)
+   *  @param aid Database column aid SqlType(int4)
+   *  @param viewcount Database column viewcount SqlType(int4)
+   *  @param danmaku Database column danmaku SqlType(int4)
+   *  @param reply Database column reply SqlType(int4)
+   *  @param favorite Database column favorite SqlType(int4)
+   *  @param coin Database column coin SqlType(int4)
+   *  @param sharecount Database column sharecount SqlType(int4)
+   *  @param nowRank Database column now_rank SqlType(int4)
+   *  @param hisRank Database column his_rank SqlType(int4)
+   *  @param likecount Database column likecount SqlType(int4)
+   *  @param noReprint Database column no_reprint SqlType(int4)
+   *  @param copyright Database column copyright SqlType(int4)
+   *  @param inserttime Database column inserttime SqlType(timestamp) */
   final case class rVideo(av: Int, title: String, upname: String, upmid: Int, createtime: java.sql.Timestamp, zone: String, subzone: String, cid: String, aid: Int, viewcount: Int, danmaku: Int, reply: Int, favorite: Int, coin: Int, sharecount: Int, nowRank: Int, hisRank: Int, likecount: Int, noReprint: Int, copyright: Int, inserttime: java.sql.Timestamp)
   /** GetResult implicit for fetching rVideo objects using plain SQL queries */
   implicit def GetResultrVideo(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp]): GR[rVideo] = GR{
     prs => import prs._
-      rVideo.tupled((<<[Int], <<[String], <<[String], <<[Int], <<[java.sql.Timestamp], <<[String], <<[String], <<[String], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp]))
+    rVideo.tupled((<<[Int], <<[String], <<[String], <<[Int], <<[java.sql.Timestamp], <<[String], <<[String], <<[String], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp]))
   }
   /** Table description of table video. Objects of this class serve as prototypes for rows in queries. */
   class tVideo(_tableTag: Tag) extends profile.api.Table[rVideo](_tableTag, "video") {

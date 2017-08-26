@@ -7,7 +7,7 @@ import ExcitingBilibili.Utility.{Bilibili, Database}
 import akka.actor.Actor
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import ExcitingBilibili.Utility.Concurrent.executor
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -21,13 +21,33 @@ class InfoUpdater extends Actor {
     case InsertVideo(av) =>
       Video.getVideoInfo(av.toString).flatMap {
         case Some(videoInfo) =>
-          for {_ <- Future{Database.InsertVideo(videoInfo)}
-               _ <- danmu.getDanmu(videoInfo.cid)
-                 .map(content => content.map((videoInfo.cid.toInt, av, _)))
-                 .map(Database.insertDanmu)
-               _ <- Comment.getAllComment(av.toString).map(comments => {
-                 Database.insertComment(Comment.flatten(comments, av))
-               })} yield true
+          logger.debug(s"$av: Get video info succeed.")
+          val inserting : Future[Boolean] = {
+            val insertVideo = Database.InsertVideo(videoInfo)
+              .map(_ => logger.debug(s"$av: Insert video info succeed."))
+            val getDanmuAndInsert = danmu.getDanmu(videoInfo.cid)
+              .map(content => content.map((videoInfo.cid.toInt, av, _)))
+              .map(Database.insertDanmu)
+              .map(_ => logger.debug(s"$av: Insert danmu info succeed."))
+            val getCommentsAndInsert = Comment.getAllComment(av.toString).map(comments => {
+              Database.insertComment(Comment.flatten(comments, av))
+            }).map(_ => logger.debug(s"$av: Insert video info succeed."))
+
+            for {
+              _ <- insertVideo
+              _ <- getDanmuAndInsert
+              _ <- getCommentsAndInsert
+            } yield true
+          }
+          inserting
+//          for {_ <- Database.InsertVideo(videoInfo)
+//               _ <- danmu.getDanmu(videoInfo.cid)
+//                 .map(content => content.map((videoInfo.cid.toInt, av, _)))
+//                 .map(Database.insertDanmu)
+//               _ <- Comment.getAllComment(av.toString).map(comments => {
+//                 Database.insertComment(Comment.flatten(comments, av))
+//               })} yield true
+
         case None =>
           Future {
             false

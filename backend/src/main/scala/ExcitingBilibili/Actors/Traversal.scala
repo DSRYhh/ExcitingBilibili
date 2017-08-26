@@ -6,7 +6,7 @@ import ExcitingBilibili.Utility.{AppSettings, Database}
 import akka.actor.{Actor, Props}
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import ExcitingBilibili.Utility.Concurrent.executor
 import scala.concurrent.Future
 
 /**

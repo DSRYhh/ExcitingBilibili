@@ -1,6 +1,6 @@
 package ExcitingBilibili.Utility.Database
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import ExcitingBilibili.Utility.Concurrent.executor
 import ExcitingBilibili.Utility.Concurrent
 
 import scala.util.{Failure, Success}

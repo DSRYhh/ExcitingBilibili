@@ -3,9 +3,8 @@ package ExcitingBilibili
 import ExcitingBilibili.Actors.Manager
 import ExcitingBilibili.Http.ApiRouter
 import ExcitingBilibili.Utility.Concurrent
+import ExcitingBilibili.Utility.Concurrent.executor
 import org.slf4j.LoggerFactory
-
-import scala.io.StdIn
 
 /**
   * The entry of the program

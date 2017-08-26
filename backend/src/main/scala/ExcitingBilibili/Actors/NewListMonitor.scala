@@ -5,7 +5,7 @@ import ExcitingBilibili.Utility.Bilibili.Newlist
 import akka.actor.{Actor, Props}
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import ExcitingBilibili.Utility.Concurrent.executor
 import scala.util.{Failure, Success}
 
 /**

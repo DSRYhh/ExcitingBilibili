@@ -12,7 +12,7 @@
         </encoder>
     </appender>
 
-    <logger name="ExcitingBilibili" level="DEBUG" additivity="true" />
+    <logger name="ExcitingBilibili" level="INFO" additivity="true" />
 
     <logger name="akka" level="INFO" additivity="true"/>
 

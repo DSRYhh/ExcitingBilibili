@@ -169,7 +169,7 @@ package object Database {
     DBUtil.db.run {
       for {
         todayDanmu <- danmuCount(today)
-        yesterdayDanmu <- danmuCount(yesterday)
+        yesterdayDanmu <- danmuCount(yesterday)//TODO yesterday data can use cache instead of read from database directly
         todayVideo <- videoCount(today)
         yesterdayVideo <- videoCount(yesterday)
         todayComment <- commentCount(today)
